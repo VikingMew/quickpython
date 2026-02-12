@@ -1,28 +1,65 @@
 # QuickPython 语言规格
 
+## 当前实现状态
+
+### ✅ 已实现 (Phase 1 - MVP)
+
+#### 数据类型
+- [x] 整数 (i32)
+- [x] 布尔值 (bool)
+- [x] 空值 (None)
+- [x] 函数 (Function)
+- [ ] 字符串 (String) - 待实现 (Task 006)
+- [ ] 浮点数 (f64) - 待实现
+
+#### 运算符
+- [x] 算术: +, -, *, /
+- [x] 比较: ==, !=, <, <=, >, >=
+- [ ] 字符串拼接: + - 待实现 (Task 006)
+
+#### 控制流
+- [x] if/else
+- [x] while 循环
+- [ ] for 循环 - 待实现
+- [ ] break/continue - 待实现
+
+#### 函数
+- [x] 函数定义 (def)
+- [x] 函数调用
+- [x] 参数传递
+- [x] return 语句
+- [x] 递归
+
+#### 内置函数
+- [ ] print() - 待实现 (Task 006)
+- [ ] len() - 待实现
+- [ ] range() - 待实现
+
+---
+
 ## 支持的 Python 语法子集
 
 ### 数据类型
 
 #### 基础类型 (Phase 1)
 ```python
-# 整数
+# 整数 ✅
 x = 42
 y = -100
 
-# 浮点数
+# 浮点数 (待实现)
 pi = 3.14
 e = 2.718
 
-# 字符串
+# 字符串 (Task 006)
 name = "QuickPython"
 message = 'Hello, World!'
 
-# 布尔值
+# 布尔值 ✅
 is_valid = True
 is_empty = False
 
-# 空值
+# 空值 ✅
 result = None
 ```
 
@@ -42,7 +79,7 @@ point = (10, 20)
 
 ### 运算符
 
-#### 算术运算符
+#### 算术运算符 ✅
 ```python
 a + b    # 加法
 a - b    # 减法
