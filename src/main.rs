@@ -328,4 +328,40 @@ def fib(n):
         let result = ctx.eval("fib(10)").unwrap();
         assert_eq!(result.as_int(), Some(55));
     }
+
+    #[test]
+    fn test_string_literal() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello""#).unwrap();
+        assert_eq!(result.as_string(), Some("hello"));
+    }
+
+    #[test]
+    fn test_string_concatenation() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello" + " " + "world""#).unwrap();
+        assert_eq!(result.as_string(), Some("hello world"));
+    }
+
+    #[test]
+    fn test_string_variable() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"s = "test""#).unwrap();
+        let result = ctx.eval("s").unwrap();
+        assert_eq!(result.as_string(), Some("test"));
+    }
+
+    #[test]
+    fn test_print_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"print("hello")"#).unwrap();
+        assert_eq!(result, Value::None);
+    }
+
+    #[test]
+    fn test_print_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("print(42)").unwrap();
+        assert_eq!(result, Value::None);
+    }
 }

@@ -6,6 +6,7 @@ pub enum Value {
     Int(i32),
     Bool(bool),
     None,
+    String(String),
     Function(Function),
 }
 
@@ -31,11 +32,19 @@ impl Value {
         }
     }
 
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
     pub fn is_truthy(&self) -> bool {
         match self {
             Value::Bool(b) => *b,
             Value::Int(i) => *i != 0,
             Value::None => false,
+            Value::String(s) => !s.is_empty(),
             Value::Function(_) => true,
         }
     }

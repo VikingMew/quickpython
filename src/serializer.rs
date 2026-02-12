@@ -2,7 +2,7 @@ use crate::bytecode::{ByteCode, Instruction};
 use std::io::Write;
 
 const MAGIC: &[u8; 4] = b"QPY\0";
-const VERSION: u32 = 2;
+const VERSION: u32 = 3;
 
 pub fn serialize_bytecode(bytecode: &ByteCode) -> Result<Vec<u8>, String> {
     let mut buffer = Vec::new();
@@ -65,6 +65,14 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
             buffer.push(if *b { 1 } else { 0 });
         }
         Instruction::PushNone => buffer.push(0x03),
+        Instruction::PushString(s) => {
+            buffer.push(0x05);
+            let bytes = s.as_bytes();
+            buffer
+                .write_all(&(bytes.len() as u32).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+            buffer.write_all(bytes).map_err(|e| e.to_string())?;
+        }
         Instruction::Pop => buffer.push(0x04),
         Instruction::Add => buffer.push(0x10),
         Instruction::Sub => buffer.push(0x11),
@@ -119,6 +127,7 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::MakeFunction { .. } | Instruction::Call(_) | Instruction::Return => {
             return Err("Function instructions cannot be serialized yet".to_string());
         }
+        Instruction::Print => buffer.push(0x40),
     }
     Ok(())
 }
@@ -145,6 +154,18 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
         }
         0x03 => Ok((Instruction::PushNone, 1)),
         0x04 => Ok((Instruction::Pop, 1)),
+        0x05 => {
+            if data.len() < 5 {
+                return Err("Invalid PushString instruction".to_string());
+            }
+            let len = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
+            if data.len() < 5 + len {
+                return Err("Invalid PushString instruction: string too short".to_string());
+            }
+            let s = String::from_utf8(data[5..5 + len].to_vec())
+                .map_err(|_| "Invalid UTF-8 in string".to_string())?;
+            Ok((Instruction::PushString(s), 5 + len))
+        }
         0x10 => Ok((Instruction::Add, 1)),
         0x11 => Ok((Instruction::Sub, 1)),
         0x12 => Ok((Instruction::Mul, 1)),
@@ -207,6 +228,7 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
             let offset = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
             Ok((Instruction::JumpIfFalse(offset), 5))
         }
+        0x40 => Ok((Instruction::Print, 1)),
         _ => Err(format!("Unknown opcode: 0x{:02x}", opcode)),
     }
 }

@@ -218,6 +218,9 @@ impl Compiler {
                     ast::Constant::None => {
                         bytecode.push(Instruction::PushNone);
                     }
+                    ast::Constant::Str(s) => {
+                        bytecode.push(Instruction::PushString(s.to_string()));
+                    }
                     _ => return Err("Unsupported constant type".to_string()),
                 }
                 Ok(())
@@ -265,6 +268,18 @@ impl Compiler {
                 Ok(())
             }
             ast::Expr::Call(call) => {
+                // 检查是否是 print() 内置函数
+                if let ast::Expr::Name(name) = &*call.func {
+                    if name.id.as_str() == "print" {
+                        // 编译参数
+                        for arg in &call.args {
+                            self.compile_expr(arg, bytecode)?;
+                        }
+                        bytecode.push(Instruction::Print);
+                        return Ok(());
+                    }
+                }
+
                 // 编译函数表达式
                 self.compile_expr(&call.func, bytecode)?;
 

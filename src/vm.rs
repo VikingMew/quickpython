@@ -45,6 +45,10 @@ impl VM {
                     self.stack.push(Value::None);
                     ip += 1;
                 }
+                Instruction::PushString(s) => {
+                    self.stack.push(Value::String(s.clone()));
+                    ip += 1;
+                }
                 Instruction::Pop => {
                     self.stack
                         .pop()
@@ -52,9 +56,21 @@ impl VM {
                     ip += 1;
                 }
                 Instruction::Add => {
-                    let b = self.pop_int()?;
-                    let a = self.pop_int()?;
-                    self.stack.push(Value::Int(a + b));
+                    let b = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let a = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    match (a, b) {
+                        (Value::Int(a), Value::Int(b)) => self.stack.push(Value::Int(a + b)),
+                        (Value::String(a), Value::String(b)) => {
+                            self.stack.push(Value::String(format!("{}{}", a, b)))
+                        }
+                        _ => return Err("Type error: unsupported operand types for +".to_string()),
+                    }
                     ip += 1;
                 }
                 Instruction::Sub => {
@@ -242,6 +258,21 @@ impl VM {
                     } else {
                         return Ok(return_value);
                     }
+                }
+                Instruction::Print => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    match value {
+                        Value::Int(i) => println!("{}", i),
+                        Value::Bool(b) => println!("{}", b),
+                        Value::String(s) => println!("{}", s),
+                        Value::None => println!("None"),
+                        Value::Function(f) => println!("<function {}>", f.name),
+                    }
+                    self.stack.push(Value::None);
+                    ip += 1;
                 }
             }
         }

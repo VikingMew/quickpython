@@ -5,6 +5,7 @@ pub enum Instruction {
     PushInt(i32),
     PushBool(bool),
     PushNone,
+    PushString(String),
     Pop,
 
     // 算术运算
@@ -39,6 +40,9 @@ pub enum Instruction {
     },
     Call(usize), // 参数数量
     Return,
+
+    // 内置函数
+    Print,
 }
 
 pub type ByteCode = Vec<Instruction>;

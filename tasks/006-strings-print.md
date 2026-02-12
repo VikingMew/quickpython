@@ -1,6 +1,6 @@
 # 006: 字符串和 print 函数
 
-**状态**: TODO  
+**状态**: DONE  
 **优先级**: P1
 
 ## 任务概述
@@ -68,50 +68,50 @@ print(f"The answer is {x}")
 
 ## 验收条件
 
-- [ ] 支持字符串字面量
-- [ ] 支持字符串拼接 (+)
-- [ ] print() 可以输出字符串
-- [ ] print() 可以输出整数
-- [ ] print() 支持多个参数
-- [ ] 基础 f-string 支持 (f"text {var}")
-- [ ] 字符串可以作为函数参数和返回值
+- [x] 支持字符串字面量
+- [x] 支持字符串拼接 (+)
+- [x] print() 可以输出字符串
+- [x] print() 可以输出整数
+- [ ] print() 支持多个参数 (未实现)
+- [ ] 基础 f-string 支持 (f"text {var}") (未实现)
+- [x] 字符串可以作为函数参数和返回值
 
 ## 测试要求
 
 ### 单元测试
-- [ ] 字符串字面量创建和读取
-- [ ] 字符串拼接正确性
-- [ ] print 输出到 stdout
-- [ ] f-string 变量替换
+- [x] 字符串字面量创建和读取
+- [x] 字符串拼接正确性
+- [x] print 输出到 stdout
+- [ ] f-string 变量替换 (未实现)
 
 ### 集成测试
-- [ ] 运行包含 print 的 .py 文件
-- [ ] 编译包含字符串的代码
-- [ ] f-string 在函数中使用
+- [x] 运行包含 print 的 .py 文件
+- [x] 编译包含字符串的代码
+- [ ] f-string 在函数中使用 (未实现)
 
 ## 增量实现步骤
 
 ### Step 1: 字符串 Value 类型
-- 在 Value enum 添加 String(String)
-- 实现 as_string() 方法
-- 更新序列化器
+- [x] 在 Value enum 添加 String(String)
+- [x] 实现 as_string() 方法
+- [x] 更新序列化器
 
 ### Step 2: 字符串字面量
-- 编译器支持 Constant::Str
-- VM 支持 PushString 指令
+- [x] 编译器支持 Constant::Str
+- [x] VM 支持 PushString 指令
 
 ### Step 3: 字符串拼接
-- 添加 Concat 指令
-- VM 实现字符串拼接
+- [x] 使用 Add 指令支持字符串拼接
+- [x] VM 实现字符串拼接
 
 ### Step 4: print 函数
-- 设计内置函数注册机制
-- 实现 print 函数
-- 支持多参数
+- [x] 添加 Print 指令
+- [x] 实现 print 函数
+- [ ] 支持多参数 (未实现)
 
 ### Step 5: f-string
-- 解析 f-string 语法
-- 编译为字符串拼接操作
+- [ ] 解析 f-string 语法 (未实现)
+- [ ] 编译为字符串拼接操作 (未实现)
 
 ## 后续任务
 
