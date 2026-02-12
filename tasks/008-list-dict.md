@@ -52,10 +52,6 @@ ctx.eval("scores[4] = 92").unwrap();
 // 字典方法
 ctx.eval("keys = person.keys()").unwrap();
 
-// 可选：values() 和 items() 可以后续实现
-// ctx.eval("values = person.values()").unwrap();
-// ctx.eval("items = person.items()").unwrap();
-
 // len() 函数
 let result = ctx.eval("len(numbers)").unwrap();
 assert_eq!(result.as_int(), Some(5));
@@ -97,11 +93,7 @@ assert_eq!(result.as_int(), Some(2));
 - len() 函数
 - list.append(x)
 - list.pop()
-- list.insert(i, x)
 - dict.keys()
-- dict.get(key, default) - 可选
-- dict.values() - 可选，后续实现
-- dict.items() - 可选，后续实现
 
 ### 5. 序列化
 - 列表和字典序列化支持
@@ -119,11 +111,6 @@ assert_eq!(result.as_int(), Some(2));
 - [ ] len() 函数支持列表和字典
 - [ ] 嵌套数据结构（列表的列表，字典的字典）
 - [ ] 使用不支持的类型作为键时报错（如 bool, list）
-
-### 可选功能（后续实现）
-- [ ] dict.values() 方法
-- [ ] dict.items() 方法
-- [ ] dict.get(key, default) 方法
 
 ## 测试要求
 
@@ -168,8 +155,7 @@ assert_eq!(result.as_int(), Some(2));
 - 不支持的键类型报错
 
 ### Step 6: 字典方法
-- 实现 keys() 方法（必需）
-- values() 和 items() 可以后续实现
+- 实现 keys() 方法
 
 ### Step 7: len() 函数
 - 实现 len() 内置函数
