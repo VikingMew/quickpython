@@ -31,33 +31,64 @@
 
 | 编号 | 任务 | 可运行功能 | 状态 |
 |------|------|-----------|------|
-| 001 | 执行简单表达式 | `eval("1 + 2")` → 3 | TODO |
-| 002 | 变量赋值和读取 | `eval("x = 1")` + `get("x")` | TODO |
-| 003 | 函数定义和调用 | `def add(a,b): return a+b` | TODO |
-| 004 | 控制流 | `if/while` + Fibonacci | TODO |
-| 005 | CLI 工具 | `quickpython run test.py` | TODO |
-| 006 | 列表和字典 | `[1,2,3]` + `{"a": 1}` | TODO |
-| 007 | 字符串操作 | 拼接、格式化 | TODO |
-| 008 | 异步支持 | `async/await` | TODO |
+| 001 | 执行简单表达式 | `eval("1 + 2")` → 3 | DONE ✅ |
+| 002 | 变量赋值和读取 | `eval("x = 1")` + `get("x")` | DONE ✅ |
+| 003 | 函数定义和调用 | `def add(a,b): return a+b` | DONE ✅ |
+| 004 | 控制流 (while) | `if/while` + Fibonacci | DONE ✅ |
+| 005 | CLI 工具 | `quickpython run test.py` | DONE ✅ |
+| 006 | 字符串和 print | `print("hello")` + f-string | TODO 📝 |
+| 007 | 浮点数支持 | `3.14 * 2.0` → 6.28 | TODO 📝 |
+| 008 | 列表和字典 | `[1,2,3]` + `{"a": 1}` | TODO 📝 |
+| 009 | for 循环和迭代器 | `for i in range(10)` | TODO 📝 |
+| 010 | break 和 continue | 循环控制语句 | TODO 📝 |
 
 ## 增量开发路径
 
 ```
-001: 能算 1+2
+001: 能算 1+2 ✅
   ↓
-002: 能存变量 x=1
+002: 能存变量 x=1 ✅
   ↓
-003: 能定义函数
+003: 能定义函数 ✅
   ↓
-004: 能用 if/while
+004: 能用 if/while ✅
   ↓
-005: 能运行文件
+005: 能运行文件 ✅
+  ↓
+006: 能输出 print ⏳
+  ↓
+007: 能算小数 ⏳
+  ↓
+008: 能用列表字典 ⏳
+  ↓
+009: 能用 for 循环 ⏳
+  ↓
+010: 能用 break/continue ⏳
 ```
 
-## MVP 完成标准
+## Phase 1 (MVP) 完成标准
 
-完成所有任务后：
+已完成 ✅：
 - ✅ 可以运行 Python 文件
 - ✅ 支持基础运算和变量
-- ✅ 支持函数和控制流
+- ✅ 支持函数和控制流 (if/while)
 - ✅ 有可用的 CLI 工具
+- ✅ 支持递归和字节码编译
+
+## Phase 2 (实用功能) 目标
+
+待完成 ⏳：
+- ⏳ 字符串和 print 输出 (Task 006)
+- ⏳ 浮点数运算 (Task 007)
+- ⏳ 列表和字典 (Task 008)
+- ⏳ for 循环遍历 (Task 009)
+- ⏳ break/continue (Task 010)
+
+## 后续规划
+
+Phase 3 (高级特性)：
+- 更多运算符 (//, %, and, or, not)
+- elif 多分支条件
+- 类和对象
+- 异常处理
+- 模块系统
