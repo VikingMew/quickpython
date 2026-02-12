@@ -1,5 +1,6 @@
 use crate::bytecode::{ByteCode, Instruction};
 use crate::value::Value;
+use std::collections::HashMap;
 
 pub struct VM {
     stack: Vec<Value>,
@@ -10,7 +11,11 @@ impl VM {
         VM { stack: Vec::new() }
     }
 
-    pub fn execute(&mut self, bytecode: &ByteCode) -> Result<Value, String> {
+    pub fn execute(
+        &mut self,
+        bytecode: &ByteCode,
+        globals: &mut HashMap<String, Value>,
+    ) -> Result<Value, String> {
         for instruction in bytecode {
             match instruction {
                 Instruction::PushInt(i) => {
@@ -38,6 +43,26 @@ impl VM {
                         return Err("Division by zero".to_string());
                     }
                     self.stack.push(Value::Int(a / b));
+                }
+                Instruction::GetGlobal(name) => {
+                    let value = globals
+                        .get(name)
+                        .ok_or_else(|| format!("Undefined variable: {}", name))?
+                        .clone();
+                    self.stack.push(value);
+                }
+                Instruction::SetGlobal(name) => {
+                    let value = self
+                        .stack
+                        .last()
+                        .ok_or_else(|| "Stack underflow".to_string())?
+                        .clone();
+                    globals.insert(name.clone(), value);
+                }
+                Instruction::Pop => {
+                    self.stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
                 }
             }
         }

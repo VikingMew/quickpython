@@ -6,6 +6,9 @@ pub enum Instruction {
     Sub,
     Mul,
     Div,
+    GetGlobal(String),
+    SetGlobal(String),
+    Pop,
 }
 
 pub type ByteCode = Vec<Instruction>;

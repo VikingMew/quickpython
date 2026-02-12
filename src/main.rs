@@ -59,7 +59,8 @@ fn main() {
                 };
 
                 let mut vm = vm::VM::new();
-                match vm.execute(&bytecode) {
+                let mut globals = std::collections::HashMap::new();
+                match vm.execute(&bytecode, &mut globals) {
                     Ok(result) => {
                         if let Some(i) = result.as_int() {
                             println!("{}", i);
@@ -190,6 +191,38 @@ mod tests {
     fn test_division_by_zero() {
         let mut ctx = Context::new();
         let result = ctx.eval("10 / 0");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_variable_assignment() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 42").unwrap();
+        let x = ctx.eval("x").unwrap();
+        assert_eq!(x.as_int(), Some(42));
+    }
+
+    #[test]
+    fn test_variable_expr() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 10").unwrap();
+        ctx.eval("y = x * 2").unwrap();
+        let y = ctx.eval("y").unwrap();
+        assert_eq!(y.as_int(), Some(20));
+    }
+
+    #[test]
+    fn test_get_set_api() {
+        let mut ctx = Context::new();
+        ctx.set("z", Value::Int(100));
+        let z = ctx.get("z").unwrap();
+        assert_eq!(z.as_int(), Some(100));
+    }
+
+    #[test]
+    fn test_undefined_variable() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("undefined_var");
         assert!(result.is_err());
     }
 }
