@@ -285,4 +285,47 @@ def max(a, b):
         let result = ctx.eval("5 == 5").unwrap();
         assert_eq!(result.as_bool(), Some(true));
     }
+
+    #[test]
+    fn test_while_loop() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+i = 0
+sum = 0
+while i < 10:
+    sum = sum + i
+    i = i + 1
+        "#,
+        )
+        .unwrap();
+
+        let sum = ctx.get("sum").unwrap();
+        assert_eq!(sum.as_int(), Some(45));
+    }
+
+    #[test]
+    fn test_fibonacci_iterative() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def fib(n):
+    if n <= 1:
+        return n
+    a = 0
+    b = 1
+    i = 2
+    while i <= n:
+        temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+    return b
+        "#,
+        )
+        .unwrap();
+
+        let result = ctx.eval("fib(10)").unwrap();
+        assert_eq!(result.as_int(), Some(55));
+    }
 }

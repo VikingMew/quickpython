@@ -168,6 +168,31 @@ impl Compiler {
 
                 Ok(())
             }
+            ast::Stmt::While(while_stmt) => {
+                // 循环开始位置
+                let loop_start = bytecode.len();
+
+                // 编译条件
+                self.compile_expr(&while_stmt.test, bytecode)?;
+
+                // JumpIfFalse 到循环结束
+                let jump_to_end = bytecode.len();
+                bytecode.push(Instruction::JumpIfFalse(0)); // 占位符
+
+                // 编译循环体
+                for stmt in &while_stmt.body {
+                    self.compile_stmt(stmt, bytecode)?;
+                }
+
+                // 跳回循环开始
+                bytecode.push(Instruction::Jump(loop_start));
+
+                // 回填跳转到结束的位置
+                let end_pos = bytecode.len();
+                bytecode[jump_to_end] = Instruction::JumpIfFalse(end_pos);
+
+                Ok(())
+            }
             ast::Stmt::Expr(expr_stmt) => {
                 self.compile_expr(&expr_stmt.value, bytecode)?;
                 bytecode.push(Instruction::Pop);
