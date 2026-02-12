@@ -410,4 +410,109 @@ def fib(n):
         let result = ctx.eval("float(x)").unwrap();
         assert_eq!(result.as_float(), Some(10.0));
     }
+
+    #[test]
+    fn test_list_literal() {
+        let mut ctx = Context::new();
+        ctx.eval("numbers = [1, 2, 3, 4, 5]").unwrap();
+        let numbers = ctx.get("numbers").unwrap();
+        let list = numbers.as_list().unwrap();
+        assert_eq!(list.borrow().len(), 5);
+    }
+
+    #[test]
+    fn test_list_index() {
+        let mut ctx = Context::new();
+        ctx.eval("numbers = [10, 20, 30]").unwrap();
+        let result = ctx.eval("numbers[0]").unwrap();
+        assert_eq!(result.as_int(), Some(10));
+
+        let result = ctx.eval("numbers[2]").unwrap();
+        assert_eq!(result.as_int(), Some(30));
+    }
+
+    #[test]
+    fn test_list_index_assignment() {
+        let mut ctx = Context::new();
+        ctx.eval("numbers = [1, 2, 3]").unwrap();
+        ctx.eval("numbers[1] = 99").unwrap();
+        let result = ctx.eval("numbers[1]").unwrap();
+        assert_eq!(result.as_int(), Some(99));
+    }
+
+    #[test]
+    fn test_list_append() {
+        let mut ctx = Context::new();
+        ctx.eval("numbers = [1, 2, 3]").unwrap();
+        ctx.eval("numbers.append(4)").unwrap();
+        let numbers = ctx.get("numbers").unwrap();
+        let list = numbers.as_list().unwrap();
+        assert_eq!(list.borrow().len(), 4);
+        assert_eq!(list.borrow()[3].as_int(), Some(4));
+    }
+
+    #[test]
+    fn test_list_pop() {
+        let mut ctx = Context::new();
+        ctx.eval("numbers = [1, 2, 3]").unwrap();
+        let result = ctx.eval("numbers.pop()").unwrap();
+        assert_eq!(result.as_int(), Some(3));
+
+        let numbers = ctx.get("numbers").unwrap();
+        let list = numbers.as_list().unwrap();
+        assert_eq!(list.borrow().len(), 2);
+    }
+
+    #[test]
+    fn test_dict_literal_string_keys() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"person = {"name": "Alice", "age": 30}"#)
+            .unwrap();
+        let result = ctx.eval(r#"person["name"]"#).unwrap();
+        assert_eq!(result.as_string(), Some("Alice"));
+    }
+
+    #[test]
+    fn test_dict_literal_int_keys() {
+        let mut ctx = Context::new();
+        ctx.eval("scores = {1: 100, 2: 95, 3: 88}").unwrap();
+        let result = ctx.eval("scores[1]").unwrap();
+        assert_eq!(result.as_int(), Some(100));
+    }
+
+    #[test]
+    fn test_dict_assignment() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"person = {"name": "Bob"}"#).unwrap();
+        ctx.eval(r#"person["age"] = 25"#).unwrap();
+        let result = ctx.eval(r#"person["age"]"#).unwrap();
+        assert_eq!(result.as_int(), Some(25));
+    }
+
+    #[test]
+    fn test_dict_keys() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"person = {"name": "Alice", "age": 30}"#)
+            .unwrap();
+        let result = ctx.eval("person.keys()").unwrap();
+        let keys = result.as_list().unwrap();
+        assert_eq!(keys.borrow().len(), 2);
+    }
+
+    #[test]
+    fn test_len_function() {
+        let mut ctx = Context::new();
+
+        ctx.eval("numbers = [1, 2, 3, 4, 5]").unwrap();
+        let result = ctx.eval("len(numbers)").unwrap();
+        assert_eq!(result.as_int(), Some(5));
+
+        ctx.eval(r#"person = {"name": "Alice", "age": 30}"#)
+            .unwrap();
+        let result = ctx.eval("len(person)").unwrap();
+        assert_eq!(result.as_int(), Some(2));
+
+        let result = ctx.eval(r#"len("hello")"#).unwrap();
+        assert_eq!(result.as_int(), Some(5));
+    }
 }

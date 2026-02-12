@@ -46,6 +46,14 @@ pub enum Instruction {
     Print,
     Int,   // int() 类型转换
     Float, // float() 类型转换
+    Len,   // len() 函数
+
+    // 列表和字典
+    BuildList(usize),          // 从栈顶取 n 个元素构建列表
+    BuildDict(usize),          // 从栈顶取 n*2 个元素构建字典（键值对）
+    GetItem,                   // 索引访问 list[i] 或 dict[key]
+    SetItem,                   // 索引赋值 list[i] = x 或 dict[key] = x
+    CallMethod(String, usize), // 方法调用 obj.method(args)
 }
 
 pub type ByteCode = Vec<Instruction>;

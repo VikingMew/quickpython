@@ -2,7 +2,7 @@ use crate::bytecode::{ByteCode, Instruction};
 use std::io::Write;
 
 const MAGIC: &[u8; 4] = b"QPY\0";
-const VERSION: u32 = 4;
+const VERSION: u32 = 5;
 
 pub fn serialize_bytecode(bytecode: &ByteCode) -> Result<Vec<u8>, String> {
     let mut buffer = Vec::new();
@@ -136,6 +136,14 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::Print => buffer.push(0x40),
         Instruction::Int => buffer.push(0x41),
         Instruction::Float => buffer.push(0x42),
+        Instruction::Len => buffer.push(0x43),
+        Instruction::BuildList(_)
+        | Instruction::BuildDict(_)
+        | Instruction::GetItem
+        | Instruction::SetItem
+        | Instruction::CallMethod(_, _) => {
+            return Err("List/Dict instructions cannot be serialized yet".to_string());
+        }
     }
     Ok(())
 }
@@ -248,6 +256,7 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
         0x40 => Ok((Instruction::Print, 1)),
         0x41 => Ok((Instruction::Int, 1)),
         0x42 => Ok((Instruction::Float, 1)),
+        0x43 => Ok((Instruction::Len, 1)),
         _ => Err(format!("Unknown opcode: 0x{:02x}", opcode)),
     }
 }

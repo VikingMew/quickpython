@@ -68,7 +68,16 @@ impl Compiler {
                                 bytecode.push(Instruction::SetGlobal(var_name));
                             }
                         }
-                        _ => return Err("Only simple variable assignment is supported".to_string()),
+                        ast::Expr::Subscript(subscript) => {
+                            // 下标赋值: obj[index] = value
+                            // 编译对象
+                            self.compile_expr(&subscript.value, bytecode)?;
+                            // 编译索引
+                            self.compile_expr(&subscript.slice, bytecode)?;
+                            // 值已经在栈顶
+                            bytecode.push(Instruction::SetItem);
+                        }
+                        _ => return Err("Unsupported assignment target".to_string()),
                     }
                 }
                 Ok(())
@@ -298,8 +307,29 @@ impl Compiler {
                             bytecode.push(Instruction::Float);
                             return Ok(());
                         }
+                        "len" => {
+                            if call.args.len() != 1 {
+                                return Err("len() takes exactly one argument".to_string());
+                            }
+                            self.compile_expr(&call.args[0], bytecode)?;
+                            bytecode.push(Instruction::Len);
+                            return Ok(());
+                        }
                         _ => {}
                     }
+                }
+
+                // 检查是否是方法调用
+                if let ast::Expr::Attribute(attr) = &*call.func {
+                    let method_name = attr.attr.to_string();
+                    // 编译对象
+                    self.compile_expr(&attr.value, bytecode)?;
+                    // 编译参数
+                    for arg in &call.args {
+                        self.compile_expr(arg, bytecode)?;
+                    }
+                    bytecode.push(Instruction::CallMethod(method_name, call.args.len()));
+                    return Ok(());
                 }
 
                 // 编译函数表达式
@@ -311,6 +341,35 @@ impl Compiler {
                 }
 
                 bytecode.push(Instruction::Call(call.args.len()));
+                Ok(())
+            }
+            ast::Expr::List(list) => {
+                // 编译列表元素
+                for elt in &list.elts {
+                    self.compile_expr(elt, bytecode)?;
+                }
+                bytecode.push(Instruction::BuildList(list.elts.len()));
+                Ok(())
+            }
+            ast::Expr::Dict(dict) => {
+                // 编译字典键值对
+                for i in 0..dict.keys.len() {
+                    if let Some(key) = &dict.keys[i] {
+                        self.compile_expr(key, bytecode)?;
+                    } else {
+                        return Err("Dictionary unpacking not supported".to_string());
+                    }
+                    self.compile_expr(&dict.values[i], bytecode)?;
+                }
+                bytecode.push(Instruction::BuildDict(dict.keys.len()));
+                Ok(())
+            }
+            ast::Expr::Subscript(subscript) => {
+                // 编译对象
+                self.compile_expr(&subscript.value, bytecode)?;
+                // 编译索引
+                self.compile_expr(&subscript.slice, bytecode)?;
+                bytecode.push(Instruction::GetItem);
                 Ok(())
             }
             _ => Err(format!("Unsupported expression: {:?}", expr)),

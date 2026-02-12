@@ -1,6 +1,8 @@
 use crate::bytecode::{ByteCode, Instruction};
-use crate::value::{Function, Value};
+use crate::value::{DictKey, Function, Value};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 struct Frame {
     locals: Vec<Value>,
@@ -336,14 +338,7 @@ impl VM {
                         .stack
                         .pop()
                         .ok_or_else(|| "Stack underflow".to_string())?;
-                    match value {
-                        Value::Int(i) => println!("{}", i),
-                        Value::Float(f) => println!("{}", f),
-                        Value::Bool(b) => println!("{}", b),
-                        Value::String(s) => println!("{}", s),
-                        Value::None => println!("None"),
-                        Value::Function(f) => println!("<function {}>", f.name),
-                    }
+                    Self::print_value(&value);
                     self.stack.push(Value::None);
                     ip += 1;
                 }
@@ -393,6 +388,209 @@ impl VM {
                     self.stack.push(Value::Float(result));
                     ip += 1;
                 }
+                Instruction::Len => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let result = match value {
+                        Value::String(s) => s.len() as i32,
+                        Value::List(list) => list.borrow().len() as i32,
+                        Value::Dict(dict) => dict.borrow().len() as i32,
+                        _ => return Err("object has no len()".to_string()),
+                    };
+                    self.stack.push(Value::Int(result));
+                    ip += 1;
+                }
+                Instruction::BuildList(count) => {
+                    let mut elements = Vec::new();
+                    for _ in 0..*count {
+                        elements.push(
+                            self.stack
+                                .pop()
+                                .ok_or_else(|| "Stack underflow".to_string())?,
+                        );
+                    }
+                    elements.reverse();
+                    self.stack
+                        .push(Value::List(Rc::new(RefCell::new(elements))));
+                    ip += 1;
+                }
+                Instruction::BuildDict(count) => {
+                    let mut dict = HashMap::new();
+                    for _ in 0..*count {
+                        let value = self
+                            .stack
+                            .pop()
+                            .ok_or_else(|| "Stack underflow".to_string())?;
+                        let key = self
+                            .stack
+                            .pop()
+                            .ok_or_else(|| "Stack underflow".to_string())?;
+
+                        let dict_key = match key {
+                            Value::String(s) => DictKey::String(s),
+                            Value::Int(i) => DictKey::Int(i),
+                            _ => {
+                                return Err("unhashable type: only str and int can be dict keys"
+                                    .to_string());
+                            }
+                        };
+                        dict.insert(dict_key, value);
+                    }
+                    self.stack.push(Value::Dict(Rc::new(RefCell::new(dict))));
+                    ip += 1;
+                }
+                Instruction::GetItem => {
+                    let index = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+
+                    match obj {
+                        Value::List(list) => {
+                            let idx = index
+                                .as_int()
+                                .ok_or_else(|| "list indices must be integers".to_string())?;
+                            let list_ref = list.borrow();
+                            let len = list_ref.len() as i32;
+                            let actual_idx = if idx < 0 { len + idx } else { idx };
+                            if actual_idx < 0 || actual_idx >= len {
+                                return Err("list index out of range".to_string());
+                            }
+                            self.stack.push(list_ref[actual_idx as usize].clone());
+                        }
+                        Value::Dict(dict) => {
+                            let dict_key = match index {
+                                Value::String(s) => DictKey::String(s),
+                                Value::Int(i) => DictKey::Int(i),
+                                _ => {
+                                    return Err(
+                                        "unhashable type: only str and int can be dict keys"
+                                            .to_string(),
+                                    );
+                                }
+                            };
+                            let dict_ref = dict.borrow();
+                            let value = dict_ref
+                                .get(&dict_key)
+                                .ok_or_else(|| "KeyError".to_string())?
+                                .clone();
+                            self.stack.push(value);
+                        }
+                        _ => return Err("object is not subscriptable".to_string()),
+                    }
+                    ip += 1;
+                }
+                Instruction::SetItem => {
+                    let index = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let value = self
+                        .stack
+                        .last()
+                        .ok_or_else(|| "Stack underflow".to_string())?
+                        .clone();
+
+                    match obj {
+                        Value::List(list) => {
+                            let idx = index
+                                .as_int()
+                                .ok_or_else(|| "list indices must be integers".to_string())?;
+                            let mut list_ref = list.borrow_mut();
+                            let len = list_ref.len() as i32;
+                            let actual_idx = if idx < 0 { len + idx } else { idx };
+                            if actual_idx < 0 || actual_idx >= len {
+                                return Err("list assignment index out of range".to_string());
+                            }
+                            list_ref[actual_idx as usize] = value;
+                        }
+                        Value::Dict(dict) => {
+                            let dict_key = match index {
+                                Value::String(s) => DictKey::String(s),
+                                Value::Int(i) => DictKey::Int(i),
+                                _ => {
+                                    return Err(
+                                        "unhashable type: only str and int can be dict keys"
+                                            .to_string(),
+                                    );
+                                }
+                            };
+                            dict.borrow_mut().insert(dict_key, value);
+                        }
+                        _ => return Err("object does not support item assignment".to_string()),
+                    }
+                    ip += 1;
+                }
+                Instruction::CallMethod(method_name, arg_count) => {
+                    // 获取参数
+                    let mut args = Vec::new();
+                    for _ in 0..*arg_count {
+                        args.push(
+                            self.stack
+                                .pop()
+                                .ok_or_else(|| "Stack underflow".to_string())?,
+                        );
+                    }
+                    args.reverse();
+
+                    // 获取对象
+                    let obj = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+
+                    match obj {
+                        Value::List(list) => match method_name.as_str() {
+                            "append" => {
+                                if args.len() != 1 {
+                                    return Err("append() takes exactly one argument".to_string());
+                                }
+                                list.borrow_mut().push(args[0].clone());
+                                self.stack.push(Value::None);
+                            }
+                            "pop" => {
+                                if args.len() != 0 {
+                                    return Err("pop() takes no arguments".to_string());
+                                }
+                                let value = list
+                                    .borrow_mut()
+                                    .pop()
+                                    .ok_or_else(|| "pop from empty list".to_string())?;
+                                self.stack.push(value);
+                            }
+                            _ => return Err(format!("list has no method '{}'", method_name)),
+                        },
+                        Value::Dict(dict) => match method_name.as_str() {
+                            "keys" => {
+                                if args.len() != 0 {
+                                    return Err("keys() takes no arguments".to_string());
+                                }
+                                let keys: Vec<Value> = dict
+                                    .borrow()
+                                    .keys()
+                                    .map(|k| match k {
+                                        DictKey::String(s) => Value::String(s.clone()),
+                                        DictKey::Int(i) => Value::Int(*i),
+                                    })
+                                    .collect();
+                                self.stack.push(Value::List(Rc::new(RefCell::new(keys))));
+                            }
+                            _ => return Err(format!("dict has no method '{}'", method_name)),
+                        },
+                        _ => return Err(format!("object has no method '{}'", method_name)),
+                    }
+                    ip += 1;
+                }
             }
         }
 
@@ -413,5 +611,79 @@ impl VM {
             .pop()
             .ok_or_else(|| "Stack underflow".to_string())?;
         value.as_int().ok_or_else(|| "Expected integer".to_string())
+    }
+
+    fn print_value(value: &Value) {
+        match value {
+            Value::Int(i) => println!("{}", i),
+            Value::Float(f) => println!("{}", f),
+            Value::Bool(b) => println!("{}", b),
+            Value::String(s) => println!("{}", s),
+            Value::None => println!("None"),
+            Value::List(list) => {
+                print!("[");
+                let list_ref = list.borrow();
+                for (i, item) in list_ref.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    Self::print_value_inline(item);
+                }
+                println!("]");
+            }
+            Value::Dict(dict) => {
+                print!("{{");
+                let dict_ref = dict.borrow();
+                for (i, (key, value)) in dict_ref.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    match key {
+                        DictKey::String(s) => print!("'{}': ", s),
+                        DictKey::Int(i) => print!("{}: ", i),
+                    }
+                    Self::print_value_inline(value);
+                }
+                println!("}}");
+            }
+            Value::Function(f) => println!("<function {}>", f.name),
+        }
+    }
+
+    fn print_value_inline(value: &Value) {
+        match value {
+            Value::Int(i) => print!("{}", i),
+            Value::Float(f) => print!("{}", f),
+            Value::Bool(b) => print!("{}", b),
+            Value::String(s) => print!("'{}'", s),
+            Value::None => print!("None"),
+            Value::List(list) => {
+                print!("[");
+                let list_ref = list.borrow();
+                for (i, item) in list_ref.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    Self::print_value_inline(item);
+                }
+                print!("]");
+            }
+            Value::Dict(dict) => {
+                print!("{{");
+                let dict_ref = dict.borrow();
+                for (i, (key, value)) in dict_ref.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    match key {
+                        DictKey::String(s) => print!("'{}': ", s),
+                        DictKey::Int(i) => print!("{}: ", i),
+                    }
+                    Self::print_value_inline(value);
+                }
+                print!("}}");
+            }
+            Value::Function(f) => print!("<function {}>", f.name),
+        }
     }
 }

@@ -1,6 +1,6 @@
 # 008: 列表和字典
 
-**状态**: TODO  
+**状态**: DONE  
 **优先级**: P0
 
 ## 任务概述
@@ -100,65 +100,65 @@ assert_eq!(result.as_int(), Some(2));
 
 ## 验收条件
 
-- [ ] 支持列表字面量
-- [ ] 列表索引读取和赋值
-- [ ] 列表 append/pop 方法
-- [ ] 支持字典字面量
-- [ ] 字典支持字符串键
-- [ ] 字典支持整数键
-- [ ] 字典键访问和赋值
-- [ ] 字典 keys() 方法
-- [ ] len() 函数支持列表和字典
-- [ ] 嵌套数据结构（列表的列表，字典的字典）
-- [ ] 使用不支持的类型作为键时报错（如 bool, list）
+- [x] 支持列表字面量
+- [x] 列表索引读取和赋值
+- [x] 列表 append/pop 方法
+- [x] 支持字典字面量
+- [x] 字典支持字符串键
+- [x] 字典支持整数键
+- [x] 字典键访问和赋值
+- [x] 字典 keys() 方法
+- [x] len() 函数支持列表和字典
+- [x] 嵌套数据结构（列表的列表，字典的字典）
+- [x] 使用不支持的类型作为键时报错（如 bool, list）
 
 ## 测试要求
 
 ### 单元测试
-- [ ] 列表创建和访问
-- [ ] 列表方法正确性
-- [ ] 字典创建和访问（字符串键）
-- [ ] 字典创建和访问（整数键）
-- [ ] 字典方法正确性
-- [ ] len() 函数
-- [ ] 嵌套结构
-- [ ] 不支持的键类型报错
+- [x] 列表创建和访问
+- [x] 列表方法正确性
+- [x] 字典创建和访问（字符串键）
+- [x] 字典创建和访问（整数键）
+- [x] 字典方法正确性
+- [x] len() 函数
+- [x] 嵌套结构
+- [x] 不支持的键类型报错
 
 ### 集成测试
-- [ ] 运行包含列表的程序
-- [ ] 运行包含字典的程序
-- [ ] 列表和字典混合使用
+- [x] 运行包含列表的程序
+- [x] 运行包含字典的程序
+- [x] 列表和字典混合使用
 
 ## 增量实现步骤
 
 ### Step 1: List Value 类型
-- 在 Value enum 添加 List(Rc<RefCell<Vec<Value>>>)
-- 实现 as_list() 方法
+- [x] 在 Value enum 添加 List(Rc<RefCell<Vec<Value>>>)
+- [x] 实现 as_list() 方法
 
 ### Step 2: 列表字面量
-- 编译器支持 List 表达式
-- VM 支持 BuildList 指令
+- [x] 编译器支持 List 表达式
+- [x] VM 支持 BuildList 指令
 
 ### Step 3: 列表索引
-- 编译器支持 Subscript 表达式
-- VM 支持 GetItem/SetItem 指令
+- [x] 编译器支持 Subscript 表达式
+- [x] VM 支持 GetItem/SetItem 指令
 
 ### Step 4: 列表方法
-- 实现方法调用机制
-- 实现 append, pop 等方法
+- [x] 实现方法调用机制
+- [x] 实现 append, pop 等方法
 
 ### Step 5: Dict Value 类型
-- 定义 DictKey enum { String(String), Int(i32) }
-- 在 Value enum 添加 Dict(HashMap<DictKey, Value>)
-- 实现字典字面量和访问
-- 支持字符串和整数键
-- 不支持的键类型报错
+- [x] 定义 DictKey enum { String(String), Int(i32) }
+- [x] 在 Value enum 添加 Dict(Rc<RefCell<HashMap<DictKey, Value>>>)
+- [x] 实现字典字面量和访问
+- [x] 支持字符串和整数键
+- [x] 不支持的键类型报错
 
 ### Step 6: 字典方法
-- 实现 keys() 方法
+- [x] 实现 keys() 方法
 
 ### Step 7: len() 函数
-- 实现 len() 内置函数
+- [x] 实现 len() 内置函数
 
 ## 后续任务
 
