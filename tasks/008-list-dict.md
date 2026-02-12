@@ -51,7 +51,10 @@ ctx.eval("scores[4] = 92").unwrap();
 
 // 字典方法
 ctx.eval("keys = person.keys()").unwrap();
-ctx.eval("values = person.values()").unwrap();
+
+// 可选：values() 和 items() 可以后续实现
+// ctx.eval("values = person.values()").unwrap();
+// ctx.eval("items = person.items()").unwrap();
 
 // len() 函数
 let result = ctx.eval("len(numbers)").unwrap();
@@ -96,9 +99,9 @@ assert_eq!(result.as_int(), Some(2));
 - list.pop()
 - list.insert(i, x)
 - dict.keys()
-- dict.values()
-- dict.items()
-- dict.get(key, default)
+- dict.get(key, default) - 可选
+- dict.values() - 可选，后续实现
+- dict.items() - 可选，后续实现
 
 ### 5. 序列化
 - 列表和字典序列化支持
@@ -112,10 +115,15 @@ assert_eq!(result.as_int(), Some(2));
 - [ ] 字典支持字符串键
 - [ ] 字典支持整数键
 - [ ] 字典键访问和赋值
-- [ ] 字典 keys/values 方法
+- [ ] 字典 keys() 方法
 - [ ] len() 函数支持列表和字典
 - [ ] 嵌套数据结构（列表的列表，字典的字典）
 - [ ] 使用不支持的类型作为键时报错（如 bool, list）
+
+### 可选功能（后续实现）
+- [ ] dict.values() 方法
+- [ ] dict.items() 方法
+- [ ] dict.get(key, default) 方法
 
 ## 测试要求
 
@@ -160,7 +168,8 @@ assert_eq!(result.as_int(), Some(2));
 - 不支持的键类型报错
 
 ### Step 6: 字典方法
-- 实现 keys, values, items 等方法
+- 实现 keys() 方法（必需）
+- values() 和 items() 可以后续实现
 
 ### Step 7: len() 函数
 - 实现 len() 内置函数

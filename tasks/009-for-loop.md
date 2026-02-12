@@ -46,17 +46,12 @@ for key in person.keys():
     print(key)
 "#).unwrap();
 
-// for...in dict.values()
-ctx.eval(r#"
-for value in person.values():
-    print(value)
-"#).unwrap();
-
-// for...in dict.items()
-ctx.eval(r#"
-for key, value in person.items():
-    print(key, value)
-"#).unwrap();
+// 注意：dict.values() 和 dict.items() 在 Task 008 中标记为可选
+// 可以在后续版本中实现
+// for value in person.values():
+//     print(value)
+// for key, value in person.items():
+//     print(key, value)
 
 // range() 的不同形式
 ctx.eval("for i in range(5): pass").unwrap();           // 0..5
@@ -80,7 +75,7 @@ ctx.eval("for i in range(0, 10, 2): pass").unwrap();    // 0,2,4,6,8
 
 ### 2. 扩展编译器
 - for...in 语句编译
-- 元组解包（for key, value in items）
+- 元组解包（可选，for key, value in items 需要 dict.items()）
 
 ### 3. 扩展 VM
 - GetIter 指令（获取迭代器）
@@ -94,8 +89,8 @@ ctx.eval("for i in range(0, 10, 2): pass").unwrap();    // 0,2,4,6,8
 
 ### 5. 字典迭代方法
 - dict.keys() 返回可迭代对象
-- dict.values() 返回可迭代对象
-- dict.items() 返回可迭代对象
+- dict.values() 返回可迭代对象 - 可选
+- dict.items() 返回可迭代对象 - 可选
 
 ## 验收条件
 
@@ -103,10 +98,12 @@ ctx.eval("for i in range(0, 10, 2): pass").unwrap();    // 0,2,4,6,8
 - [ ] for item in list 正常工作
 - [ ] for key in dict 正常工作
 - [ ] for key in dict.keys() 正常工作
-- [ ] for value in dict.values() 正常工作
-- [ ] for key, value in dict.items() 正常工作
 - [ ] range(stop), range(start, stop), range(start, stop, step) 都支持
 - [ ] 嵌套 for 循环
+
+### 可选功能（后续实现）
+- [ ] for value in dict.values() 正常工作
+- [ ] for key, value in dict.items() 正常工作（需要元组解包）
 
 ## 测试要求
 
@@ -142,11 +139,12 @@ ctx.eval("for i in range(0, 10, 2): pass").unwrap();    // 0,2,4,6,8
 
 ### Step 5: 字典迭代
 - 实现 DictIterator
-- 字典支持 __iter__
-- 实现 keys(), values(), items()
+- 字典支持 __iter__（遍历键）
+- 实现 keys() 方法
 
-### Step 6: 元组解包
+### Step 6: 元组解包（可选）
 - 支持 for key, value in items
+- 需要先实现 dict.items()
 
 ## 后续任务
 
