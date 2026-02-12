@@ -36,12 +36,18 @@ assert_eq!(x.as_int(), Some(6));
 // 字典字面量
 ctx.eval(r#"person = {"name": "Alice", "age": 30}"#).unwrap();
 
-// 字典访问
+// 字典访问（字符串键）
 let result = ctx.eval(r#"person["name"]"#).unwrap();
 assert_eq!(result.as_string(), Some("Alice"));
 
+// 字典访问（整数键）
+ctx.eval("scores = {1: 100, 2: 95, 3: 88}").unwrap();
+let result = ctx.eval("scores[1]").unwrap();
+assert_eq!(result.as_int(), Some(100));
+
 // 字典赋值
 ctx.eval(r#"person["age"] = 31"#).unwrap();
+ctx.eval("scores[4] = 92").unwrap();
 
 // 字典方法
 ctx.eval("keys = person.keys()").unwrap();
@@ -65,7 +71,9 @@ assert_eq!(result.as_int(), Some(2));
 
 ### 1. 扩展 Value 系统
 - 添加 List(Vec<Value>) 类型
-- 添加 Dict(HashMap<String, Value>) 类型
+- 添加 Dict 类型，支持 String 和 Int 作为键
+  - 内部使用 HashMap<DictKey, Value>
+  - DictKey enum { String(String), Int(i32) }
 - 实现 as_list(), as_dict() 方法
 
 ### 2. 扩展编译器
@@ -101,20 +109,25 @@ assert_eq!(result.as_int(), Some(2));
 - [ ] 列表索引读取和赋值
 - [ ] 列表 append/pop 方法
 - [ ] 支持字典字面量
+- [ ] 字典支持字符串键
+- [ ] 字典支持整数键
 - [ ] 字典键访问和赋值
 - [ ] 字典 keys/values 方法
 - [ ] len() 函数支持列表和字典
 - [ ] 嵌套数据结构（列表的列表，字典的字典）
+- [ ] 使用不支持的类型作为键时报错（如 bool, list）
 
 ## 测试要求
 
 ### 单元测试
 - [ ] 列表创建和访问
 - [ ] 列表方法正确性
-- [ ] 字典创建和访问
+- [ ] 字典创建和访问（字符串键）
+- [ ] 字典创建和访问（整数键）
 - [ ] 字典方法正确性
 - [ ] len() 函数
 - [ ] 嵌套结构
+- [ ] 不支持的键类型报错
 
 ### 集成测试
 - [ ] 运行包含列表的程序
@@ -140,8 +153,11 @@ assert_eq!(result.as_int(), Some(2));
 - 实现 append, pop 等方法
 
 ### Step 5: Dict Value 类型
-- 在 Value enum 添加 Dict
+- 定义 DictKey enum { String(String), Int(i32) }
+- 在 Value enum 添加 Dict(HashMap<DictKey, Value>)
 - 实现字典字面量和访问
+- 支持字符串和整数键
+- 不支持的键类型报错
 
 ### Step 6: 字典方法
 - 实现 keys, values, items 等方法
