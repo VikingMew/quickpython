@@ -225,4 +225,64 @@ mod tests {
         let result = ctx.eval("undefined_var");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_function_def_and_call() {
+        let mut ctx = Context::new();
+        ctx.eval("def add(a, b):\n    return a + b").unwrap();
+        let result = ctx.eval("add(1, 2)").unwrap();
+        assert_eq!(result.as_int(), Some(3));
+    }
+
+    #[test]
+    fn test_factorial() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+        "#,
+        )
+        .unwrap();
+
+        let result = ctx.eval("factorial(5)").unwrap();
+        assert_eq!(result.as_int(), Some(120));
+    }
+
+    #[test]
+    fn test_if_else() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def max(a, b):
+    if a > b:
+        return a
+    else:
+        return b
+        "#,
+        )
+        .unwrap();
+
+        let result = ctx.eval("max(10, 5)").unwrap();
+        assert_eq!(result.as_int(), Some(10));
+
+        let result = ctx.eval("max(3, 8)").unwrap();
+        assert_eq!(result.as_int(), Some(8));
+    }
+
+    #[test]
+    fn test_comparison_operators() {
+        let mut ctx = Context::new();
+
+        let result = ctx.eval("5 > 3").unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+
+        let result = ctx.eval("5 < 3").unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+
+        let result = ctx.eval("5 == 5").unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
 }

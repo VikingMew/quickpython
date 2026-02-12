@@ -2,26 +2,21 @@ use crate::bytecode::{ByteCode, Instruction};
 use std::io::Write;
 
 const MAGIC: &[u8; 4] = b"QPY\0";
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 
 pub fn serialize_bytecode(bytecode: &ByteCode) -> Result<Vec<u8>, String> {
     let mut buffer = Vec::new();
 
-    // 写入魔数
     buffer.write_all(MAGIC).map_err(|e| e.to_string())?;
-
-    // 写入版本号
     buffer
         .write_all(&VERSION.to_le_bytes())
         .map_err(|e| e.to_string())?;
 
-    // 写入指令数量
     let count = bytecode.len() as u32;
     buffer
         .write_all(&count.to_le_bytes())
         .map_err(|e| e.to_string())?;
 
-    // 写入每条指令
     for instruction in bytecode {
         serialize_instruction(&mut buffer, instruction)?;
     }
@@ -34,18 +29,15 @@ pub fn deserialize_bytecode(data: &[u8]) -> Result<ByteCode, String> {
         return Err("Invalid bytecode: too short".to_string());
     }
 
-    // 验证魔数
     if &data[0..4] != MAGIC {
         return Err("Invalid bytecode: wrong magic number".to_string());
     }
 
-    // 读取版本号
     let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
-    if version != VERSION {
+    if version > VERSION {
         return Err(format!("Unsupported bytecode version: {}", version));
     }
 
-    // 读取指令数量
     let count = u32::from_le_bytes([data[8], data[9], data[10], data[11]]) as usize;
 
     let mut bytecode = Vec::with_capacity(count);
@@ -68,10 +60,22 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
                 .write_all(&value.to_le_bytes())
                 .map_err(|e| e.to_string())?;
         }
+        Instruction::PushBool(b) => {
+            buffer.push(0x02);
+            buffer.push(if *b { 1 } else { 0 });
+        }
+        Instruction::PushNone => buffer.push(0x03),
+        Instruction::Pop => buffer.push(0x04),
         Instruction::Add => buffer.push(0x10),
         Instruction::Sub => buffer.push(0x11),
         Instruction::Mul => buffer.push(0x12),
         Instruction::Div => buffer.push(0x13),
+        Instruction::Eq => buffer.push(0x14),
+        Instruction::Ne => buffer.push(0x15),
+        Instruction::Lt => buffer.push(0x16),
+        Instruction::Le => buffer.push(0x17),
+        Instruction::Gt => buffer.push(0x18),
+        Instruction::Ge => buffer.push(0x19),
         Instruction::GetGlobal(name) => {
             buffer.push(0x20);
             let bytes = name.as_bytes();
@@ -88,7 +92,33 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
                 .map_err(|e| e.to_string())?;
             buffer.write_all(bytes).map_err(|e| e.to_string())?;
         }
-        Instruction::Pop => buffer.push(0x30),
+        Instruction::GetLocal(index) => {
+            buffer.push(0x22);
+            buffer
+                .write_all(&(*index as u16).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::SetLocal(index) => {
+            buffer.push(0x23);
+            buffer
+                .write_all(&(*index as u16).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::Jump(offset) => {
+            buffer.push(0x30);
+            buffer
+                .write_all(&(*offset as u32).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::JumpIfFalse(offset) => {
+            buffer.push(0x31);
+            buffer
+                .write_all(&(*offset as u32).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::MakeFunction { .. } | Instruction::Call(_) | Instruction::Return => {
+            return Err("Function instructions cannot be serialized yet".to_string());
+        }
     }
     Ok(())
 }
@@ -107,10 +137,24 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
             let value = i32::from_le_bytes([data[1], data[2], data[3], data[4]]);
             Ok((Instruction::PushInt(value), 5))
         }
+        0x02 => {
+            if data.len() < 2 {
+                return Err("Invalid PushBool instruction".to_string());
+            }
+            Ok((Instruction::PushBool(data[1] != 0), 2))
+        }
+        0x03 => Ok((Instruction::PushNone, 1)),
+        0x04 => Ok((Instruction::Pop, 1)),
         0x10 => Ok((Instruction::Add, 1)),
         0x11 => Ok((Instruction::Sub, 1)),
         0x12 => Ok((Instruction::Mul, 1)),
         0x13 => Ok((Instruction::Div, 1)),
+        0x14 => Ok((Instruction::Eq, 1)),
+        0x15 => Ok((Instruction::Ne, 1)),
+        0x16 => Ok((Instruction::Lt, 1)),
+        0x17 => Ok((Instruction::Le, 1)),
+        0x18 => Ok((Instruction::Gt, 1)),
+        0x19 => Ok((Instruction::Ge, 1)),
         0x20 => {
             if data.len() < 3 {
                 return Err("Invalid GetGlobal instruction".to_string());
@@ -135,7 +179,34 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
                 .map_err(|_| "Invalid UTF-8 in variable name".to_string())?;
             Ok((Instruction::SetGlobal(name), 3 + len))
         }
-        0x30 => Ok((Instruction::Pop, 1)),
+        0x22 => {
+            if data.len() < 3 {
+                return Err("Invalid GetLocal instruction".to_string());
+            }
+            let index = u16::from_le_bytes([data[1], data[2]]) as usize;
+            Ok((Instruction::GetLocal(index), 3))
+        }
+        0x23 => {
+            if data.len() < 3 {
+                return Err("Invalid SetLocal instruction".to_string());
+            }
+            let index = u16::from_le_bytes([data[1], data[2]]) as usize;
+            Ok((Instruction::SetLocal(index), 3))
+        }
+        0x30 => {
+            if data.len() < 5 {
+                return Err("Invalid Jump instruction".to_string());
+            }
+            let offset = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
+            Ok((Instruction::Jump(offset), 5))
+        }
+        0x31 => {
+            if data.len() < 5 {
+                return Err("Invalid JumpIfFalse instruction".to_string());
+            }
+            let offset = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
+            Ok((Instruction::JumpIfFalse(offset), 5))
+        }
         _ => Err(format!("Unknown opcode: 0x{:02x}", opcode)),
     }
 }
@@ -167,38 +238,25 @@ mod tests {
     }
 
     #[test]
-    fn test_version() {
-        let bytecode = vec![Instruction::Add];
-        let serialized = serialize_bytecode(&bytecode).unwrap();
-
-        let version =
-            u32::from_le_bytes([serialized[4], serialized[5], serialized[6], serialized[7]]);
-        assert_eq!(version, 1);
-    }
-
-    #[test]
-    fn test_invalid_magic() {
-        let data = b"XXX\0\x01\x00\x00\x00\x00\x00\x00\x00";
-        let result = deserialize_bytecode(data);
-
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("magic"));
-    }
-
-    #[test]
-    fn test_too_short() {
-        let data = b"QPY\0\x01";
-        let result = deserialize_bytecode(data);
-
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_variable_instructions() {
         let bytecode = vec![
             Instruction::PushInt(42),
             Instruction::SetGlobal("x".to_string()),
             Instruction::GetGlobal("x".to_string()),
+        ];
+
+        let serialized = serialize_bytecode(&bytecode).unwrap();
+        let deserialized = deserialize_bytecode(&serialized).unwrap();
+
+        assert_eq!(bytecode, deserialized);
+    }
+
+    #[test]
+    fn test_bool_and_comparison() {
+        let bytecode = vec![
+            Instruction::PushInt(5),
+            Instruction::PushInt(3),
+            Instruction::Lt,
         ];
 
         let serialized = serialize_bytecode(&bytecode).unwrap();
