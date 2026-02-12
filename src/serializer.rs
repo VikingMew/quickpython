@@ -2,7 +2,7 @@ use crate::bytecode::{ByteCode, Instruction};
 use std::io::Write;
 
 const MAGIC: &[u8; 4] = b"QPY\0";
-const VERSION: u32 = 3;
+const VERSION: u32 = 4;
 
 pub fn serialize_bytecode(bytecode: &ByteCode) -> Result<Vec<u8>, String> {
     let mut buffer = Vec::new();
@@ -56,6 +56,12 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
     match instruction {
         Instruction::PushInt(value) => {
             buffer.push(0x01);
+            buffer
+                .write_all(&value.to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::PushFloat(value) => {
+            buffer.push(0x06);
             buffer
                 .write_all(&value.to_le_bytes())
                 .map_err(|e| e.to_string())?;
@@ -128,6 +134,8 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
             return Err("Function instructions cannot be serialized yet".to_string());
         }
         Instruction::Print => buffer.push(0x40),
+        Instruction::Int => buffer.push(0x41),
+        Instruction::Float => buffer.push(0x42),
     }
     Ok(())
 }
@@ -165,6 +173,15 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
             let s = String::from_utf8(data[5..5 + len].to_vec())
                 .map_err(|_| "Invalid UTF-8 in string".to_string())?;
             Ok((Instruction::PushString(s), 5 + len))
+        }
+        0x06 => {
+            if data.len() < 9 {
+                return Err("Invalid PushFloat instruction".to_string());
+            }
+            let value = f64::from_le_bytes([
+                data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8],
+            ]);
+            Ok((Instruction::PushFloat(value), 9))
         }
         0x10 => Ok((Instruction::Add, 1)),
         0x11 => Ok((Instruction::Sub, 1)),
@@ -229,6 +246,8 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
             Ok((Instruction::JumpIfFalse(offset), 5))
         }
         0x40 => Ok((Instruction::Print, 1)),
+        0x41 => Ok((Instruction::Int, 1)),
+        0x42 => Ok((Instruction::Float, 1)),
         _ => Err(format!("Unknown opcode: 0x{:02x}", opcode)),
     }
 }

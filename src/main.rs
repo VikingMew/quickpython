@@ -364,4 +364,50 @@ def fib(n):
         let result = ctx.eval("print(42)").unwrap();
         assert_eq!(result, Value::None);
     }
+
+    #[test]
+    fn test_float_literal() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("3.14").unwrap();
+        assert_eq!(result.as_float(), Some(3.14));
+    }
+
+    #[test]
+    fn test_float_arithmetic() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("3.14 * 2.0").unwrap();
+        assert_eq!(result.as_float(), Some(6.28));
+    }
+
+    #[test]
+    fn test_mixed_int_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 + 3.5").unwrap();
+        assert_eq!(result.as_float(), Some(13.5));
+
+        let result = ctx.eval("10 / 3.0").unwrap();
+        assert!((result.as_float().unwrap() - 3.333333333333333).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_int_conversion() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 3.14").unwrap();
+        let result = ctx.eval("int(x)").unwrap();
+        assert_eq!(result.as_int(), Some(3));
+
+        let result = ctx.eval("int(3.9)").unwrap();
+        assert_eq!(result.as_int(), Some(3));
+    }
+
+    #[test]
+    fn test_float_conversion() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("float(42)").unwrap();
+        assert_eq!(result.as_float(), Some(42.0));
+
+        ctx.eval("x = 10").unwrap();
+        let result = ctx.eval("float(x)").unwrap();
+        assert_eq!(result.as_float(), Some(10.0));
+    }
 }

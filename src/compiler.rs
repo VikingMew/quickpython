@@ -212,6 +212,9 @@ impl Compiler {
                             .map_err(|_| "Integer overflow".to_string())?;
                         bytecode.push(Instruction::PushInt(value));
                     }
+                    ast::Constant::Float(f) => {
+                        bytecode.push(Instruction::PushFloat(*f));
+                    }
                     ast::Constant::Bool(b) => {
                         bytecode.push(Instruction::PushBool(*b));
                     }
@@ -268,15 +271,34 @@ impl Compiler {
                 Ok(())
             }
             ast::Expr::Call(call) => {
-                // 检查是否是 print() 内置函数
+                // 检查是否是内置函数
                 if let ast::Expr::Name(name) = &*call.func {
-                    if name.id.as_str() == "print" {
-                        // 编译参数
-                        for arg in &call.args {
-                            self.compile_expr(arg, bytecode)?;
+                    match name.id.as_str() {
+                        "print" => {
+                            // 编译参数
+                            for arg in &call.args {
+                                self.compile_expr(arg, bytecode)?;
+                            }
+                            bytecode.push(Instruction::Print);
+                            return Ok(());
                         }
-                        bytecode.push(Instruction::Print);
-                        return Ok(());
+                        "int" => {
+                            if call.args.len() != 1 {
+                                return Err("int() takes exactly one argument".to_string());
+                            }
+                            self.compile_expr(&call.args[0], bytecode)?;
+                            bytecode.push(Instruction::Int);
+                            return Ok(());
+                        }
+                        "float" => {
+                            if call.args.len() != 1 {
+                                return Err("float() takes exactly one argument".to_string());
+                            }
+                            self.compile_expr(&call.args[0], bytecode)?;
+                            bytecode.push(Instruction::Float);
+                            return Ok(());
+                        }
+                        _ => {}
                     }
                 }
 

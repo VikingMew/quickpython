@@ -4,6 +4,7 @@ use crate::bytecode::ByteCode;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i32),
+    Float(f64),
     Bool(bool),
     None,
     String(String),
@@ -21,6 +22,13 @@ impl Value {
     pub fn as_int(&self) -> Option<i32> {
         match self {
             Value::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Value::Float(f) => Some(*f),
             _ => None,
         }
     }
@@ -43,6 +51,7 @@ impl Value {
         match self {
             Value::Bool(b) => *b,
             Value::Int(i) => *i != 0,
+            Value::Float(f) => *f != 0.0,
             Value::None => false,
             Value::String(s) => !s.is_empty(),
             Value::Function(_) => true,

@@ -3,6 +3,7 @@
 pub enum Instruction {
     // 栈操作
     PushInt(i32),
+    PushFloat(f64),
     PushBool(bool),
     PushNone,
     PushString(String),
@@ -43,6 +44,8 @@ pub enum Instruction {
 
     // 内置函数
     Print,
+    Int,   // int() 类型转换
+    Float, // float() 类型转换
 }
 
 pub type ByteCode = Vec<Instruction>;

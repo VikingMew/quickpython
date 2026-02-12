@@ -37,6 +37,10 @@ impl VM {
                     self.stack.push(Value::Int(*i));
                     ip += 1;
                 }
+                Instruction::PushFloat(f) => {
+                    self.stack.push(Value::Float(*f));
+                    ip += 1;
+                }
                 Instruction::PushBool(b) => {
                     self.stack.push(Value::Bool(*b));
                     ip += 1;
@@ -66,6 +70,13 @@ impl VM {
                         .ok_or_else(|| "Stack underflow".to_string())?;
                     match (a, b) {
                         (Value::Int(a), Value::Int(b)) => self.stack.push(Value::Int(a + b)),
+                        (Value::Float(a), Value::Float(b)) => self.stack.push(Value::Float(a + b)),
+                        (Value::Int(a), Value::Float(b)) => {
+                            self.stack.push(Value::Float(a as f64 + b))
+                        }
+                        (Value::Float(a), Value::Int(b)) => {
+                            self.stack.push(Value::Float(a + b as f64))
+                        }
                         (Value::String(a), Value::String(b)) => {
                             self.stack.push(Value::String(format!("{}{}", a, b)))
                         }
@@ -74,24 +85,85 @@ impl VM {
                     ip += 1;
                 }
                 Instruction::Sub => {
-                    let b = self.pop_int()?;
-                    let a = self.pop_int()?;
-                    self.stack.push(Value::Int(a - b));
+                    let b = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let a = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    match (a, b) {
+                        (Value::Int(a), Value::Int(b)) => self.stack.push(Value::Int(a - b)),
+                        (Value::Float(a), Value::Float(b)) => self.stack.push(Value::Float(a - b)),
+                        (Value::Int(a), Value::Float(b)) => {
+                            self.stack.push(Value::Float(a as f64 - b))
+                        }
+                        (Value::Float(a), Value::Int(b)) => {
+                            self.stack.push(Value::Float(a - b as f64))
+                        }
+                        _ => return Err("Type error: unsupported operand types for -".to_string()),
+                    }
                     ip += 1;
                 }
                 Instruction::Mul => {
-                    let b = self.pop_int()?;
-                    let a = self.pop_int()?;
-                    self.stack.push(Value::Int(a * b));
+                    let b = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let a = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    match (a, b) {
+                        (Value::Int(a), Value::Int(b)) => self.stack.push(Value::Int(a * b)),
+                        (Value::Float(a), Value::Float(b)) => self.stack.push(Value::Float(a * b)),
+                        (Value::Int(a), Value::Float(b)) => {
+                            self.stack.push(Value::Float(a as f64 * b))
+                        }
+                        (Value::Float(a), Value::Int(b)) => {
+                            self.stack.push(Value::Float(a * b as f64))
+                        }
+                        _ => return Err("Type error: unsupported operand types for *".to_string()),
+                    }
                     ip += 1;
                 }
                 Instruction::Div => {
-                    let b = self.pop_int()?;
-                    let a = self.pop_int()?;
-                    if b == 0 {
-                        return Err("Division by zero".to_string());
+                    let b = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let a = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    match (a, b) {
+                        (Value::Int(a), Value::Int(b)) => {
+                            if b == 0 {
+                                return Err("Division by zero".to_string());
+                            }
+                            self.stack.push(Value::Int(a / b))
+                        }
+                        (Value::Float(a), Value::Float(b)) => {
+                            if b == 0.0 {
+                                return Err("Division by zero".to_string());
+                            }
+                            self.stack.push(Value::Float(a / b))
+                        }
+                        (Value::Int(a), Value::Float(b)) => {
+                            if b == 0.0 {
+                                return Err("Division by zero".to_string());
+                            }
+                            self.stack.push(Value::Float(a as f64 / b))
+                        }
+                        (Value::Float(a), Value::Int(b)) => {
+                            if b == 0 {
+                                return Err("Division by zero".to_string());
+                            }
+                            self.stack.push(Value::Float(a / b as f64))
+                        }
+                        _ => return Err("Type error: unsupported operand types for /".to_string()),
                     }
-                    self.stack.push(Value::Int(a / b));
                     ip += 1;
                 }
                 Instruction::Eq => {
@@ -266,12 +338,59 @@ impl VM {
                         .ok_or_else(|| "Stack underflow".to_string())?;
                     match value {
                         Value::Int(i) => println!("{}", i),
+                        Value::Float(f) => println!("{}", f),
                         Value::Bool(b) => println!("{}", b),
                         Value::String(s) => println!("{}", s),
                         Value::None => println!("None"),
                         Value::Function(f) => println!("<function {}>", f.name),
                     }
                     self.stack.push(Value::None);
+                    ip += 1;
+                }
+                Instruction::Int => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let result = match value {
+                        Value::Int(i) => i,
+                        Value::Float(f) => f as i32,
+                        Value::Bool(b) => {
+                            if b {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                        Value::String(s) => s
+                            .parse::<i32>()
+                            .map_err(|_| format!("invalid literal for int(): '{}'", s))?,
+                        _ => return Err("int() argument must be a number or string".to_string()),
+                    };
+                    self.stack.push(Value::Int(result));
+                    ip += 1;
+                }
+                Instruction::Float => {
+                    let value = self
+                        .stack
+                        .pop()
+                        .ok_or_else(|| "Stack underflow".to_string())?;
+                    let result = match value {
+                        Value::Int(i) => i as f64,
+                        Value::Float(f) => f,
+                        Value::Bool(b) => {
+                            if b {
+                                1.0
+                            } else {
+                                0.0
+                            }
+                        }
+                        Value::String(s) => s
+                            .parse::<f64>()
+                            .map_err(|_| format!("could not convert string to float: '{}'", s))?,
+                        _ => return Err("float() argument must be a number or string".to_string()),
+                    };
+                    self.stack.push(Value::Float(result));
                     ip += 1;
                 }
             }
