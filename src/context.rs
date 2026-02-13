@@ -18,7 +18,9 @@ impl Context {
 
     pub fn eval(&mut self, source: &str) -> Result<Value, String> {
         let bytecode = Compiler::compile(source)?;
-        self.vm.execute(&bytecode, &mut self.globals)
+        self.vm
+            .execute(&bytecode, &mut self.globals)
+            .map_err(|e| format!("{:?}", e))
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {

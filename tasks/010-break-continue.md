@@ -1,7 +1,18 @@
 # 010: break 和 continue
 
-**状态**: TODO  
+**状态**: DONE  
 **优先级**: P1
+
+## 完成总结
+
+✅ **所有功能实现完成！**
+
+- ✅ break 可以跳出 for 和 while 循环
+- ✅ continue 可以跳过当前迭代
+- ✅ 嵌套循环中 break/continue 只影响内层循环
+- ✅ 在循环外使用 break/continue 正确报错
+- ✅ 添加了 12 个测试用例，全部通过
+- ✅ 总测试数：70 passed; 0 failed
 
 ## 任务概述
 

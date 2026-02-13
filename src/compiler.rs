@@ -1,10 +1,17 @@
 use crate::bytecode::{ByteCode, Instruction};
+use crate::value::ExceptionType;
 use rustpython_parser::{Parse, ast};
 use std::collections::HashMap;
+
+struct LoopContext {
+    start: usize,            // 循环开始位置（用于 continue）
+    break_jumps: Vec<usize>, // 需要回填的 break 跳转位置
+}
 
 pub struct Compiler {
     local_vars: HashMap<String, usize>,
     local_count: usize,
+    loop_stack: Vec<LoopContext>, // 循环栈
 }
 
 impl Compiler {
@@ -12,6 +19,7 @@ impl Compiler {
         let mut compiler = Compiler {
             local_vars: HashMap::new(),
             local_count: 0,
+            loop_stack: Vec::new(),
         };
         let mut bytecode = Vec::new();
 
@@ -80,6 +88,8 @@ impl Compiler {
                         _ => return Err("Unsupported assignment target".to_string()),
                     }
                 }
+                // 赋值语句不应该留值在栈上
+                bytecode.push(Instruction::Pop);
                 Ok(())
             }
             ast::Stmt::FunctionDef(func_def) => {
@@ -95,6 +105,7 @@ impl Compiler {
                 let mut func_compiler = Compiler {
                     local_vars: HashMap::new(),
                     local_count: 0,
+                    loop_stack: Vec::new(),
                 };
 
                 // 将参数注册为局部变量
@@ -181,6 +192,12 @@ impl Compiler {
                 // 循环开始位置
                 let loop_start = bytecode.len();
 
+                // 进入循环上下文
+                self.loop_stack.push(LoopContext {
+                    start: loop_start,
+                    break_jumps: Vec::new(),
+                });
+
                 // 编译条件
                 self.compile_expr(&while_stmt.test, bytecode)?;
 
@@ -200,11 +217,210 @@ impl Compiler {
                 let end_pos = bytecode.len();
                 bytecode[jump_to_end] = Instruction::JumpIfFalse(end_pos);
 
+                // 循环结束，回填所有 break 跳转
+                let loop_ctx = self.loop_stack.pop().unwrap();
+                for jump_pos in loop_ctx.break_jumps {
+                    bytecode[jump_pos] = Instruction::Jump(end_pos);
+                }
+
+                Ok(())
+            }
+            ast::Stmt::For(for_stmt) => {
+                // for target in iter: body
+                // 编译迭代对象
+                self.compile_expr(&for_stmt.iter, bytecode)?;
+
+                // 获取迭代器
+                bytecode.push(Instruction::GetIter);
+
+                // 循环开始位置
+                let loop_start = bytecode.len();
+
+                // 进入循环上下文
+                self.loop_stack.push(LoopContext {
+                    start: loop_start,
+                    break_jumps: Vec::new(),
+                });
+
+                // ForIter: 获取下一个元素，如果结束则跳转
+                // ForIter 会将迭代器保留在栈上，并将下一个值压入栈
+                let jump_to_end = bytecode.len();
+                bytecode.push(Instruction::ForIter(0)); // 占位符
+
+                // 将迭代值赋给目标变量
+                // 栈状态: [iterator, value]
+                match &*for_stmt.target {
+                    ast::Expr::Name(name) => {
+                        let var_name = name.id.to_string();
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::SetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::SetGlobal(var_name));
+                        }
+                        bytecode.push(Instruction::Pop); // 清理赋值后的值
+                    }
+                    _ => {
+                        return Err(
+                            "Only simple variable names are supported in for loops".to_string()
+                        );
+                    }
+                }
+
+                // 编译循环体
+                // 栈状态: [iterator]
+                for stmt in &for_stmt.body {
+                    self.compile_stmt(stmt, bytecode)?;
+                }
+
+                // 跳回循环开始
+                bytecode.push(Instruction::Jump(loop_start));
+
+                // 回填跳转到结束的位置
+                let end_pos = bytecode.len();
+                bytecode[jump_to_end] = Instruction::ForIter(end_pos);
+
+                // 循环结束，回填所有 break 跳转
+                let loop_ctx = self.loop_stack.pop().unwrap();
+                for jump_pos in loop_ctx.break_jumps {
+                    bytecode[jump_pos] = Instruction::Jump(end_pos);
+                }
+
+                // 清理迭代器
+                bytecode.push(Instruction::Pop);
+
                 Ok(())
             }
             ast::Stmt::Expr(expr_stmt) => {
                 self.compile_expr(&expr_stmt.value, bytecode)?;
                 bytecode.push(Instruction::Pop);
+                Ok(())
+            }
+            ast::Stmt::Raise(raise) => {
+                use crate::value::ExceptionType;
+
+                if let Some(exc) = &raise.exc {
+                    // 检查是否是简单的异常调用
+                    if let ast::Expr::Call(call) = &**exc {
+                        if let ast::Expr::Name(name) = &*call.func {
+                            let exc_name = name.id.to_string();
+                            let exc_type = match exc_name.as_str() {
+                                "ValueError" => ExceptionType::ValueError,
+                                "TypeError" => ExceptionType::TypeError,
+                                "IndexError" => ExceptionType::IndexError,
+                                "KeyError" => ExceptionType::KeyError,
+                                "ZeroDivisionError" => ExceptionType::ZeroDivisionError,
+                                "RuntimeError" => ExceptionType::RuntimeError,
+                                "IteratorError" => ExceptionType::IteratorError,
+                                "Exception" => ExceptionType::Exception,
+                                _ => return Err(format!("Unknown exception type: {}", exc_name)),
+                            };
+
+                            // 编译消息参数
+                            if call.args.len() != 1 {
+                                return Err("Exception requires exactly one argument".to_string());
+                            }
+                            self.compile_expr(&call.args[0], bytecode)?;
+
+                            // 创建异常对象
+                            bytecode.push(Instruction::MakeException(exc_type));
+                            bytecode.push(Instruction::Raise);
+                            return Ok(());
+                        }
+                    }
+
+                    // 其他情况：编译表达式，应该得到一个异常对象
+                    self.compile_expr(exc, bytecode)?;
+                    bytecode.push(Instruction::Raise);
+                } else {
+                    // bare raise（重新抛出当前异常）
+                    return Err("bare raise not supported yet".to_string());
+                }
+                Ok(())
+            }
+            ast::Stmt::Try(try_stmt) => {
+                if !try_stmt.finalbody.is_empty() {
+                    // Has finally block - wrap everything in SetupFinally
+                    self.compile_try_except_finally(try_stmt, bytecode)?;
+                } else {
+                    // No finally block - use simple try-except
+                    self.compile_try_except(try_stmt, bytecode)?;
+                }
+                Ok(())
+            }
+            ast::Stmt::Pass(_) => {
+                // Pass statement does nothing
+                Ok(())
+            }
+            ast::Stmt::Break(_) => {
+                if let Some(loop_ctx) = self.loop_stack.last_mut() {
+                    // 添加占位跳转，稍后回填
+                    let jump_pos = bytecode.len();
+                    bytecode.push(Instruction::Jump(0)); // 占位符
+                    loop_ctx.break_jumps.push(jump_pos);
+                    Ok(())
+                } else {
+                    Err("'break' outside loop".to_string())
+                }
+            }
+            ast::Stmt::Continue(_) => {
+                if let Some(loop_ctx) = self.loop_stack.last() {
+                    // 直接跳转到循环开始
+                    bytecode.push(Instruction::Jump(loop_ctx.start));
+                    Ok(())
+                } else {
+                    Err("'continue' outside loop".to_string())
+                }
+            }
+            ast::Stmt::Import(import) => {
+                // import module [as alias]
+                for alias in &import.names {
+                    let module_name = alias.name.to_string();
+                    let as_name = alias
+                        .asname
+                        .as_ref()
+                        .map(|n| n.to_string())
+                        .unwrap_or_else(|| module_name.clone());
+
+                    // 导入模块
+                    bytecode.push(Instruction::Import(module_name));
+                    // 绑定到变量
+                    bytecode.push(Instruction::SetGlobal(as_name));
+                    bytecode.push(Instruction::Pop);
+                }
+                Ok(())
+            }
+            ast::Stmt::ImportFrom(import_from) => {
+                // from module import name1, name2 [as alias]
+                let module_name = import_from
+                    .module
+                    .as_ref()
+                    .ok_or("from import without module name")?
+                    .to_string();
+
+                // 导入模块
+                bytecode.push(Instruction::Import(module_name.clone()));
+
+                // 对每个导入的名称
+                for alias in &import_from.names {
+                    let name = alias.name.to_string();
+                    let as_name = alias
+                        .asname
+                        .as_ref()
+                        .map(|n| n.to_string())
+                        .unwrap_or_else(|| name.clone());
+
+                    // 复制模块到栈顶
+                    bytecode.push(Instruction::Dup);
+                    // 获取属性
+                    bytecode.push(Instruction::GetAttr(name));
+                    // 绑定到变量
+                    bytecode.push(Instruction::SetGlobal(as_name));
+                    bytecode.push(Instruction::Pop);
+                }
+
+                // 弹出模块
+                bytecode.push(Instruction::Pop);
+
                 Ok(())
             }
             _ => Err(format!("Unsupported statement: {:?}", stmt)),
@@ -315,6 +531,20 @@ impl Compiler {
                             bytecode.push(Instruction::Len);
                             return Ok(());
                         }
+                        "range" => {
+                            // range(stop) or range(start, stop) or range(start, stop, step)
+                            if call.args.is_empty() || call.args.len() > 3 {
+                                return Err("range() takes 1 to 3 arguments".to_string());
+                            }
+                            // 先压入参数数量
+                            bytecode.push(Instruction::PushInt(call.args.len() as i32));
+                            // 再压入参数
+                            for arg in &call.args {
+                                self.compile_expr(arg, bytecode)?;
+                            }
+                            bytecode.push(Instruction::Range);
+                            return Ok(());
+                        }
                         _ => {}
                     }
                 }
@@ -372,7 +602,200 @@ impl Compiler {
                 bytecode.push(Instruction::GetItem);
                 Ok(())
             }
+            ast::Expr::Attribute(attribute) => {
+                // obj.attr
+                // 编译对象
+                self.compile_expr(&attribute.value, bytecode)?;
+                // 获取属性
+                let attr_name = attribute.attr.to_string();
+                bytecode.push(Instruction::GetAttr(attr_name));
+                Ok(())
+            }
             _ => Err(format!("Unsupported expression: {:?}", expr)),
+        }
+    }
+
+    fn compile_try_except(
+        &mut self,
+        try_stmt: &ast::StmtTry,
+        bytecode: &mut ByteCode,
+    ) -> Result<(), String> {
+        // 设置 try 块
+        let handler_offset_placeholder = bytecode.len();
+        bytecode.push(Instruction::SetupTry(0)); // 占位符
+
+        // 编译 try 块
+        for stmt in &try_stmt.body {
+            self.compile_stmt(stmt, bytecode)?;
+        }
+
+        // 正常结束，移除 try 块
+        bytecode.push(Instruction::PopTry);
+        let end_offset_placeholder = bytecode.len();
+        bytecode.push(Instruction::Jump(0)); // 跳过 except 块
+
+        // except 块开始位置
+        let except_start = bytecode.len();
+        bytecode[handler_offset_placeholder] = Instruction::SetupTry(except_start);
+
+        let mut handler_end_placeholders = Vec::new();
+
+        // 编译每个 except 子句
+        for handler in &try_stmt.handlers {
+            match handler {
+                ast::ExceptHandler::ExceptHandler(eh) => {
+                    if let Some(exc_type) = &eh.type_ {
+                        // 复制异常对象
+                        bytecode.push(Instruction::Dup);
+
+                        // 获取异常类型
+                        bytecode.push(Instruction::GetExceptionType);
+
+                        // 压入期望的异常类型
+                        let expected_type = self.parse_exception_type(exc_type)?;
+                        bytecode.push(Instruction::PushInt(expected_type.as_i32()));
+
+                        // 比较类型
+                        bytecode.push(Instruction::Eq);
+
+                        // 如果不匹配，跳到下一个 handler
+                        let next_handler_placeholder = bytecode.len();
+                        bytecode.push(Instruction::JumpIfFalse(0));
+
+                        // 类型匹配，弹出比较结果
+                        bytecode.push(Instruction::Pop);
+
+                        // 绑定到变量（如果有）
+                        if let Some(name) = &eh.name {
+                            let var_name = name.to_string();
+                            if let Some(&index) = self.local_vars.get(&var_name) {
+                                bytecode.push(Instruction::SetLocal(index));
+                            } else {
+                                bytecode.push(Instruction::SetGlobal(var_name));
+                            }
+                            bytecode.push(Instruction::Pop);
+                        } else {
+                            // 没有绑定变量，弹出异常对象
+                            bytecode.push(Instruction::Pop);
+                        }
+
+                        // 编译 except 块体
+                        for stmt in &eh.body {
+                            self.compile_stmt(stmt, bytecode)?;
+                        }
+
+                        // 跳到 try-except 结束
+                        let handler_end_placeholder = bytecode.len();
+                        bytecode.push(Instruction::Jump(0));
+                        handler_end_placeholders.push(handler_end_placeholder);
+
+                        // 回填"跳到下一个 handler"的地址
+                        let next_handler_pos = bytecode.len();
+                        bytecode[next_handler_placeholder] =
+                            Instruction::JumpIfFalse(next_handler_pos);
+
+                        // 弹出比较结果（类型不匹配）
+                        bytecode.push(Instruction::Pop);
+                    } else {
+                        // 捕获所有异常
+                        if let Some(name) = &eh.name {
+                            let var_name = name.to_string();
+                            if let Some(&index) = self.local_vars.get(&var_name) {
+                                bytecode.push(Instruction::SetLocal(index));
+                            } else {
+                                bytecode.push(Instruction::SetGlobal(var_name));
+                            }
+                            bytecode.push(Instruction::Pop);
+                        } else {
+                            bytecode.push(Instruction::Pop);
+                        }
+
+                        // 编译 except 块体
+                        for stmt in &eh.body {
+                            self.compile_stmt(stmt, bytecode)?;
+                        }
+
+                        let handler_end_placeholder = bytecode.len();
+                        bytecode.push(Instruction::Jump(0));
+                        handler_end_placeholders.push(handler_end_placeholder);
+                    }
+                }
+            }
+        }
+
+        // 如果所有 except 都不匹配，重新抛出
+        bytecode.push(Instruction::Raise);
+
+        // 回填跳转地址
+        let after_except = bytecode.len();
+        bytecode[end_offset_placeholder] = Instruction::Jump(after_except);
+        for placeholder in handler_end_placeholders {
+            bytecode[placeholder] = Instruction::Jump(after_except);
+        }
+
+        Ok(())
+    }
+
+    fn compile_try_except_finally(
+        &mut self,
+        try_stmt: &ast::StmtTry,
+        bytecode: &mut ByteCode,
+    ) -> Result<(), String> {
+        // SetupFinally - wraps the entire try-except block
+        let finally_offset_placeholder = bytecode.len();
+        bytecode.push(Instruction::SetupFinally(0)); // Placeholder
+
+        // If there are except handlers, compile the try-except block
+        if !try_stmt.handlers.is_empty() {
+            self.compile_try_except(try_stmt, bytecode)?;
+        } else {
+            // No except handlers, just compile the try body
+            for stmt in &try_stmt.body {
+                self.compile_stmt(stmt, bytecode)?;
+            }
+        }
+
+        // Normal completion - pop finally block and push None
+        bytecode.push(Instruction::PopFinally);
+        bytecode.push(Instruction::PushNone);
+
+        // Jump to finally block
+        let jump_to_finally_placeholder = bytecode.len();
+        bytecode.push(Instruction::Jump(0)); // Placeholder
+
+        // Finally block starts here
+        let finally_start = bytecode.len();
+        bytecode[finally_offset_placeholder] = Instruction::SetupFinally(finally_start);
+
+        // Compile finally body
+        for stmt in &try_stmt.finalbody {
+            self.compile_stmt(stmt, bytecode)?;
+        }
+
+        // EndFinally - check if we need to re-raise
+        bytecode.push(Instruction::EndFinally);
+
+        // Backfill jump to finally
+        bytecode[jump_to_finally_placeholder] = Instruction::Jump(finally_start);
+
+        Ok(())
+    }
+
+    fn parse_exception_type(&self, expr: &ast::Expr) -> Result<ExceptionType, String> {
+        if let ast::Expr::Name(name) = expr {
+            match name.id.to_string().as_str() {
+                "ValueError" => Ok(ExceptionType::ValueError),
+                "TypeError" => Ok(ExceptionType::TypeError),
+                "IndexError" => Ok(ExceptionType::IndexError),
+                "KeyError" => Ok(ExceptionType::KeyError),
+                "ZeroDivisionError" => Ok(ExceptionType::ZeroDivisionError),
+                "RuntimeError" => Ok(ExceptionType::RuntimeError),
+                "IteratorError" => Ok(ExceptionType::IteratorError),
+                "Exception" => Ok(ExceptionType::Exception),
+                _ => Err(format!("Unknown exception type: {}", name.id)),
+            }
+        } else {
+            Err("Exception type must be a name".to_string())
         }
     }
 }

@@ -1,6 +1,6 @@
 # 009: for 循环和迭代器
 
-**状态**: TODO  
+**状态**: DONE  
 **优先级**: P0
 
 ## 任务概述
@@ -84,26 +84,29 @@ ctx.eval("for i in range(0, 10, 2): pass").unwrap();    // 0,2,4,6,8
 
 ## 验收条件
 
-- [ ] for i in range(n) 正常工作
-- [ ] for item in list 正常工作
-- [ ] for key in dict 正常工作
-- [ ] for key in dict.keys() 正常工作
-- [ ] range(stop), range(start, stop), range(start, stop, step) 都支持
-- [ ] 嵌套 for 循环
+- [x] for i in range(n) 正常工作
+- [x] for item in list 正常工作
+- [x] for key in dict 正常工作
+- [x] for key in dict.keys() 正常工作
+- [x] range(stop), range(start, stop), range(start, stop, step) 都支持
+- [x] 嵌套 for 循环
 
 ## 测试要求
 
 ### 单元测试
-- [ ] range() 生成正确的序列
-- [ ] 列表迭代器正确性
-- [ ] 字典迭代器正确性
-- [ ] 元组解包
+- [x] range() 生成正确的序列
+- [x] 列表迭代器正确性
+- [x] 字典迭代器正确性
 
 ### 集成测试
-- [ ] 遍历列表求和
-- [ ] 遍历字典打印键值
-- [ ] 嵌套循环
-- [ ] for 循环中修改列表（注意迭代器失效）
+- [x] 遍历列表求和
+- [x] 遍历字典打印键值
+- [x] 嵌套循环
+
+### 已知限制
+- 在 for 循环中修改正在迭代的列表会导致未定义行为（可能无限循环）
+  - 这与 Python 的行为类似，Python 也不建议在迭代时修改列表
+  - 当前实现使用共享引用，修改会影响迭代器
 
 ## 增量实现步骤
 

@@ -144,6 +144,40 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         | Instruction::CallMethod(_, _) => {
             return Err("List/Dict instructions cannot be serialized yet".to_string());
         }
+        Instruction::Range => buffer.push(0x50),
+        Instruction::GetIter => buffer.push(0x51),
+        Instruction::ForIter(offset) => {
+            buffer.push(0x52);
+            buffer
+                .write_all(&(*offset as u32).to_le_bytes())
+                .map_err(|e| e.to_string())?;
+        }
+        Instruction::Break => {
+            return Err(
+                "Break instructions cannot be serialized (should be compiled to Jump)".to_string(),
+            );
+        }
+        Instruction::Continue => {
+            return Err(
+                "Continue instructions cannot be serialized (should be compiled to Jump)"
+                    .to_string(),
+            );
+        }
+        Instruction::MakeException(_) | Instruction::Raise => {
+            return Err("Exception instructions cannot be serialized yet".to_string());
+        }
+        Instruction::SetupTry(_)
+        | Instruction::PopTry
+        | Instruction::GetExceptionType
+        | Instruction::Dup
+        | Instruction::SetupFinally(_)
+        | Instruction::PopFinally
+        | Instruction::EndFinally => {
+            return Err("Try-except-finally instructions cannot be serialized yet".to_string());
+        }
+        Instruction::Import(_) | Instruction::GetAttr(_) => {
+            return Err("Import instructions cannot be serialized yet".to_string());
+        }
     }
     Ok(())
 }
@@ -257,6 +291,15 @@ fn deserialize_instruction(data: &[u8]) -> Result<(Instruction, usize), String> 
         0x41 => Ok((Instruction::Int, 1)),
         0x42 => Ok((Instruction::Float, 1)),
         0x43 => Ok((Instruction::Len, 1)),
+        0x50 => Ok((Instruction::Range, 1)),
+        0x51 => Ok((Instruction::GetIter, 1)),
+        0x52 => {
+            if data.len() < 5 {
+                return Err("Invalid ForIter instruction".to_string());
+            }
+            let offset = u32::from_le_bytes([data[1], data[2], data[3], data[4]]) as usize;
+            Ok((Instruction::ForIter(offset), 5))
+        }
         _ => Err(format!("Unknown opcode: 0x{:02x}", opcode)),
     }
 }

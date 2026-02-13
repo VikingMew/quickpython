@@ -1,0 +1,12 @@
+[package]
+name = "quickpython-demo"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "quickpython-demo"
+path = "src/main.rs"
+
+[dependencies]
+quickpython = { path = ".." }
+quickpython-llm = { path = "../quickpython-llm" }
