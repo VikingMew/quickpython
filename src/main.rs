@@ -13,6 +13,8 @@ pub use serializer::{deserialize_bytecode, serialize_bytecode};
 pub use value::{DictKey, ExceptionType, Module, Value};
 
 use clap::{Parser, Subcommand};
+
+#[cfg(not(test))]
 use std::process;
 
 #[derive(Parser)]
@@ -371,15 +373,15 @@ def fib(n):
     #[test]
     fn test_float_literal() {
         let mut ctx = Context::new();
-        let result = ctx.eval("3.14").unwrap();
-        assert_eq!(result.as_float(), Some(3.14));
+        let result = ctx.eval("3.15").unwrap();
+        assert_eq!(result.as_float(), Some(3.15));
     }
 
     #[test]
     fn test_float_arithmetic() {
         let mut ctx = Context::new();
-        let result = ctx.eval("3.14 * 2.0").unwrap();
-        assert_eq!(result.as_float(), Some(6.28));
+        let result = ctx.eval("3.15 * 2.0").unwrap();
+        assert_eq!(result.as_float(), Some(6.3));
     }
 
     #[test]
@@ -1670,14 +1672,14 @@ print(x)
 
     #[test]
     fn test_eval_bytecode_with_float() {
-        let source = "pi = 3.14";
+        let source = "pi = 3.15";
         let bytecode = Compiler::compile(source).unwrap();
         let bytes = serialize_bytecode(&bytecode).unwrap();
         let restored = deserialize_bytecode(&bytes).unwrap();
 
         let mut ctx = Context::new();
         ctx.eval_bytecode(&restored).unwrap();
-        assert_eq!(ctx.get("pi"), Some(Value::Float(3.14)));
+        assert_eq!(ctx.get("pi"), Some(Value::Float(3.15)));
     }
 
     #[test]
@@ -1690,8 +1692,8 @@ print(x)
     #[test]
     fn test_unary_minus_float() {
         let mut ctx = Context::new();
-        let result = ctx.eval("-3.14").unwrap();
-        assert_eq!(result, Value::Float(-3.14));
+        let result = ctx.eval("-3.15").unwrap();
+        assert_eq!(result, Value::Float(-3.15));
     }
 
     #[test]
