@@ -5,6 +5,7 @@
 **A lightweight Python bytecode VM written in Rust.**
 
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/VikingMew/quickpython/actions/workflows/ci.yml/badge.svg)](https://github.com/VikingMew/quickpython/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 
 > **Alpha** — This project is under active development. APIs may change, features may be incomplete, and bugs are expected. Contributions and feedback are welcome.
