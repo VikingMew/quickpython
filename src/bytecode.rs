@@ -45,11 +45,11 @@ pub enum Instruction {
     Return,
 
     // 内置函数
-    Print,
-    Int,   // int() 类型转换
-    Float, // float() 类型转换
-    Len,   // len() 函数
-    Range, // range() 函数，参数数量在栈上
+    Print(usize), // print() 函数，参数是要打印的值的数量
+    Int,          // int() 类型转换
+    Float,        // float() 类型转换
+    Len,          // len() 函数
+    Range,        // range() 函数，参数数量在栈上
 
     // 列表和字典
     BuildList(usize),          // 从栈顶取 n 个元素构建列表

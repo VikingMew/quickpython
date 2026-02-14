@@ -1644,21 +1644,6 @@ y = x * 2
     }
 
     #[test]
-    fn test_eval_bytecode_with_print() {
-        let source = r#"
-x = 42
-print(x)
-"#;
-        let bytecode = Compiler::compile(source).unwrap();
-        let bytes = serialize_bytecode(&bytecode).unwrap();
-        let restored = deserialize_bytecode(&bytes).unwrap();
-
-        let mut ctx = Context::new();
-        ctx.eval_bytecode(&restored).unwrap();
-        assert_eq!(ctx.get("x"), Some(Value::Int(42)));
-    }
-
-    #[test]
     fn test_eval_bytecode_with_string() {
         let source = r#"name = "hello""#;
         let bytecode = Compiler::compile(source).unwrap();

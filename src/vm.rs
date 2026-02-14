@@ -750,12 +750,26 @@ impl VM {
                 // We signal this by setting ip to a special value that we check later
                 *ip = usize::MAX; // Signal that we shouldn't update the frame IP
             }
-            Instruction::Print => {
-                let value = self
-                    .stack
-                    .pop()
-                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
-                Self::print_value(&value);
+            Instruction::Print(arg_count) => {
+                // 从栈中弹出所有参数
+                let mut values = Vec::new();
+                for _ in 0..*arg_count {
+                    values.push(self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?);
+                }
+                // 反转顺序（因为是从栈顶弹出的）
+                values.reverse();
+
+                // 打印所有值，用空格分隔
+                for (i, value) in values.iter().enumerate() {
+                    if i > 0 {
+                        print!(" ");
+                    }
+                    Self::print_value_inline(value);
+                }
+                println!();
+
                 self.stack.push(Value::None);
                 *ip += 1;
             }
@@ -1545,51 +1559,6 @@ impl VM {
         value
             .as_int()
             .ok_or_else(|| Value::error(ExceptionType::TypeError, "Expected integer"))
-    }
-
-    fn print_value(value: &Value) {
-        match value {
-            Value::Int(i) => println!("{}", i),
-            Value::Float(f) => println!("{}", f),
-            Value::Bool(b) => println!("{}", b),
-            Value::String(s) => println!("{}", s),
-            Value::None => println!("None"),
-            Value::List(list) => {
-                print!("[");
-                let list_ref = list.borrow();
-                for (i, item) in list_ref.items.iter().enumerate() {
-                    if i > 0 {
-                        print!(", ");
-                    }
-                    Self::print_value_inline(item);
-                }
-                println!("]");
-            }
-            Value::Dict(dict) => {
-                print!("{{");
-                let dict_ref = dict.borrow();
-                for (i, (key, value)) in dict_ref.iter().enumerate() {
-                    if i > 0 {
-                        print!(", ");
-                    }
-                    match key {
-                        DictKey::String(s) => print!("'{}': ", s),
-                        DictKey::Int(i) => print!("{}: ", i),
-                    }
-                    Self::print_value_inline(value);
-                }
-                println!("}}");
-            }
-            Value::Iterator(_) => println!("<iterator>"),
-            Value::Function(f) => println!("<function {}>", f.name),
-            Value::Exception(exc) => {
-                println!("{:?}: {}", exc.exception_type, exc.message);
-            }
-            Value::Module(m) => println!("<module '{}'>", m.borrow().name),
-            Value::NativeFunction(_) => println!("<built-in function>"),
-            Value::Regex(_) => println!("<regex pattern>"),
-            Value::Match(m) => println!("<re.Match object; span=({}, {})>", m.start, m.end),
-        }
     }
 
     fn print_value_inline(value: &Value) {

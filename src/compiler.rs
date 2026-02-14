@@ -502,10 +502,11 @@ impl Compiler {
                     match name.id.as_str() {
                         "print" => {
                             // 编译参数
+                            let arg_count = call.args.len();
                             for arg in &call.args {
                                 self.compile_expr(arg, bytecode)?;
                             }
-                            bytecode.push(Instruction::Print);
+                            bytecode.push(Instruction::Print(arg_count));
                             return Ok(());
                         }
                         "int" => {
