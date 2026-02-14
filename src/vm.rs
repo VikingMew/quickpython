@@ -27,6 +27,7 @@ pub struct VM {
     frames: Vec<Frame>,
     blocks: Vec<Block>,
     loaded_modules: HashMap<String, Rc<RefCell<Module>>>,
+    extension_modules: HashMap<String, Module>,
 }
 
 impl VM {
@@ -36,7 +37,12 @@ impl VM {
             frames: Vec::new(),
             blocks: Vec::new(),
             loaded_modules: HashMap::new(),
+            extension_modules: HashMap::new(),
         }
+    }
+
+    pub fn register_extension_module(&mut self, name: &str, module: Module) {
+        self.extension_modules.insert(name.to_string(), module);
     }
 
     pub fn execute(
@@ -144,13 +150,11 @@ impl VM {
         }
 
         // 3. 检查扩展模块
-        if crate::extension::is_extension_module(name) {
-            if let Some(module) = crate::extension::get_extension_module(name) {
-                let module_rc = Rc::new(RefCell::new(module));
-                self.loaded_modules
-                    .insert(name.to_string(), module_rc.clone());
-                return Ok(module_rc);
-            }
+        if let Some(module) = self.extension_modules.get(name) {
+            let module_rc = Rc::new(RefCell::new(module.clone()));
+            self.loaded_modules
+                .insert(name.to_string(), module_rc.clone());
+            return Ok(module_rc);
         }
 
         // 4. 未找到

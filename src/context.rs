@@ -1,5 +1,6 @@
+use crate::bytecode::ByteCode;
 use crate::compiler::Compiler;
-use crate::value::Value;
+use crate::value::{Module, Value};
 use crate::vm::VM;
 use std::collections::HashMap;
 
@@ -21,6 +22,16 @@ impl Context {
         self.vm
             .execute(&bytecode, &mut self.globals)
             .map_err(|e| format!("{:?}", e))
+    }
+
+    pub fn eval_bytecode(&mut self, bytecode: &ByteCode) -> Result<Value, String> {
+        self.vm
+            .execute(bytecode, &mut self.globals)
+            .map_err(|e| format!("{:?}", e))
+    }
+
+    pub fn register_extension_module(&mut self, name: &str, module: Module) {
+        self.vm.register_extension_module(name, module);
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {

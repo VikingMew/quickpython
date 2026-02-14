@@ -2,20 +2,18 @@ mod builtins;
 mod bytecode;
 mod compiler;
 mod context;
-mod extension;
 mod serializer;
 mod value;
 mod vm;
 
+pub use bytecode::{ByteCode, Instruction};
+pub use compiler::Compiler;
 pub use context::Context;
-pub use extension::{ExtensionModuleFactory, register_extension_module};
+pub use serializer::{deserialize_bytecode, serialize_bytecode};
 pub use value::{DictKey, ExceptionType, Module, Value};
 
 use clap::{Parser, Subcommand};
 use std::process;
-
-use compiler::Compiler;
-use serializer::{deserialize_bytecode, serialize_bytecode};
 
 #[derive(Parser)]
 #[command(name = "quickpython")]
@@ -1599,5 +1597,84 @@ span[0]
             )
             .unwrap();
         assert_eq!(result.as_int(), Some(6));
+    }
+
+    // === pyq bytecode API tests ===
+
+    #[test]
+    fn test_compile_serialize_execute() {
+        let source = "x = 1 + 2";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(3)));
+    }
+
+    #[test]
+    fn test_compile_serialize_roundtrip() {
+        let source = r#"
+x = 10 + 20
+y = x * 2
+"#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+        assert_eq!(bytecode, restored);
+    }
+
+    #[test]
+    fn test_serialize_error_on_function() {
+        let source = "def foo(): return 1";
+        let bytecode = Compiler::compile(source).unwrap();
+        assert!(serialize_bytecode(&bytecode).is_err());
+    }
+
+    #[test]
+    fn test_serialize_error_on_list() {
+        let source = "x = [1, 2, 3]";
+        let bytecode = Compiler::compile(source).unwrap();
+        assert!(serialize_bytecode(&bytecode).is_err());
+    }
+
+    #[test]
+    fn test_eval_bytecode_with_print() {
+        let source = r#"
+x = 42
+print(x)
+"#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(42)));
+    }
+
+    #[test]
+    fn test_eval_bytecode_with_string() {
+        let source = r#"name = "hello""#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("name"), Some(Value::String("hello".to_string())));
+    }
+
+    #[test]
+    fn test_eval_bytecode_with_float() {
+        let source = "pi = 3.14";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("pi"), Some(Value::Float(3.14)));
     }
 }

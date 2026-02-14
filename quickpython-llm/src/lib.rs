@@ -1,4 +1,4 @@
-use quickpython::{ExceptionType, Module, Value, register_extension_module};
+use quickpython::{ExceptionType, Module, Value};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -35,11 +35,7 @@ struct Choice {
     message: Message,
 }
 
-pub fn init() {
-    register_extension_module("llm", create_llm_module);
-}
-
-fn create_llm_module() -> Module {
+pub fn create_module() -> Module {
     let mut module = Module::new("llm");
 
     module.add_function("configure", llm_configure);

@@ -102,24 +102,27 @@ fn main() {
 Create a separate crate to add custom Python modules:
 
 ```rust
-use quickpython::{Module, Value, ExceptionType, register_extension_module};
+use quickpython::Module;
 
-pub fn init() {
-    register_extension_module("mymod", || {
-        let mut m = Module::new("mymod");
-        m.add_function("hello", |args| {
-            Ok(Value::String("hello from rust".to_string()))
-        });
-        m
+pub fn create_mymod() -> Module {
+    let mut m = Module::new("mymod");
+    m.add_function("hello", |_args| {
+        Ok(quickpython::Value::String("hello from rust".to_string()))
     });
+    m
 }
 ```
 
-Then from Python:
+Then register it in your application:
 
-```python
-import mymod
-print(mymod.hello())
+```rust
+use quickpython::Context;
+
+fn main() {
+    let mut ctx = Context::new();
+    ctx.register_extension_module("mymod", myext::create_mymod());
+    ctx.eval("import mymod; print(mymod.hello())").unwrap();
+}
 ```
 
 See [`quickpython-llm/`](quickpython-llm/) for a full example that wraps OpenAI-compatible APIs as a Python module.

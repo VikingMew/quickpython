@@ -53,9 +53,9 @@ quickpython-demo/              # 演示项目（sub workspace）
 
 ### 1. 扩展模块注册机制
 - 创建 `src/extension.rs` 文件
-- 定义扩展模块注册函数类型
-- 实现全局注册表
-- 提供注册、查询 API
+- 定义扩展模块工厂函数类型：`fn() -> Module`
+- 在 `Context` 上提供 `register_extension` 成员方法
+- 扩展模块注册到 Context 实例，而非全局注册表
 
 ### 2. 修改模块加载逻辑
 - 在 `vm.rs` 的 `load_module` 中添加扩展模块查找
@@ -65,11 +65,11 @@ quickpython-demo/              # 演示项目（sub workspace）
 - 使用 `cargo init --lib` 创建
 - 实现 `llm.configure()` - 配置 API endpoint 和 key
 - 实现 `llm.chat()` - 发送 HTTP 请求到 OpenAI API
-- 提供 `register()` 函数供主程序调用
+- 提供 `pub fn create_module() -> Module` 工厂函数
 
 ### 4. 创建 quickpython-demo 演示项目
 - 使用 `cargo init` 创建
-- 在 main.rs 中注册 llm 模块
+- 在 main.rs 中通过 `ctx.register_extension("llm", quickpython_llm::create_module)` 注册
 - 提供可执行程序运行 Python 文件
 - 创建 examples/llm_chat.py 示例
 
@@ -149,7 +149,7 @@ print(response["content"])
 **目的**：验证扩展模块注册机制
 
 **测试步骤**：
-1. 调用 `quickpython_llm::register()`
+1. 创建 Context，调用 `ctx.register_extension("llm", quickpython_llm::create_module)`
 2. 尝试 `import llm`
 3. 检查 llm 模块是否有 configure 和 chat 函数
 

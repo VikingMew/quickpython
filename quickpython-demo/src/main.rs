@@ -4,9 +4,6 @@ use std::env;
 use std::process;
 
 fn main() {
-    // 注册 llm 扩展模块
-    quickpython_llm::init();
-
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
@@ -29,8 +26,11 @@ fn main() {
         }
     };
 
-    // 执行 Python 代码
+    // 创建 Context 并注册扩展模块
     let mut context = Context::new();
+    context.register_extension_module("llm", quickpython_llm::create_module());
+
+    // 执行 Python 代码
     if let Err(e) = context.eval(&source) {
         eprintln!("Runtime error: {}", e);
         process::exit(1);
