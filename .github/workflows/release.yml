@@ -79,7 +79,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Strip binary (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: matrix.os != 'windows-latest' && !matrix.use_cross
         run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
 
       - name: Upload binary
