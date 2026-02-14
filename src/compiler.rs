@@ -472,6 +472,7 @@ impl Compiler {
                     ast::Operator::Sub => bytecode.push(Instruction::Sub),
                     ast::Operator::Mult => bytecode.push(Instruction::Mul),
                     ast::Operator::Div => bytecode.push(Instruction::Div),
+                    ast::Operator::Mod => bytecode.push(Instruction::Mod),
                     _ => return Err(format!("Unsupported operator: {:?}", binop.op)),
                 }
                 Ok(())

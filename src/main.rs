@@ -1736,4 +1736,39 @@ print(x)
         let result = ctx.eval_bytecode(&restored).unwrap();
         assert_eq!(result, Value::Int(-42));
     }
+
+    #[test]
+    fn test_modulo_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 % 3").unwrap();
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn test_modulo_even_check() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 % 2").unwrap();
+        assert_eq!(result, Value::Int(0));
+    }
+
+    #[test]
+    fn test_modulo_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10.5 % 3.0").unwrap();
+        assert_eq!(result, Value::Float(1.5));
+    }
+
+    #[test]
+    fn test_modulo_mixed() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 % 3.0").unwrap();
+        assert_eq!(result, Value::Float(1.0));
+    }
+
+    #[test]
+    fn test_modulo_zero_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 % 0");
+        assert!(result.is_err());
+    }
 }

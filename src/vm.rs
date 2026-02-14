@@ -323,6 +323,61 @@ impl VM {
                 }
                 *ip += 1;
             }
+            Instruction::Mod => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                match (a, b) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        if b == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "integer modulo by zero",
+                            ));
+                        }
+                        self.stack.push(Value::Int(a % b))
+                    }
+                    (Value::Float(a), Value::Float(b)) => {
+                        if b == 0.0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float modulo by zero",
+                            ));
+                        }
+                        self.stack.push(Value::Float(a % b))
+                    }
+                    (Value::Int(a), Value::Float(b)) => {
+                        if b == 0.0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float modulo by zero",
+                            ));
+                        }
+                        self.stack.push(Value::Float(a as f64 % b))
+                    }
+                    (Value::Float(a), Value::Int(b)) => {
+                        if b == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float modulo by zero",
+                            ));
+                        }
+                        self.stack.push(Value::Float(a % b as f64))
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "unsupported operand types for %",
+                        ));
+                    }
+                }
+                *ip += 1;
+            }
             Instruction::Negate => {
                 let value = self
                     .stack
