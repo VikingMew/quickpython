@@ -9,6 +9,24 @@ members = [
 name = "quickpython"
 version = "0.1.0"
 edition = "2024"
+authors = ["VikingMew"]
+description = "A lightweight Python bytecode VM written in Rust"
+license = "MPL-2.0"
+repository = "https://github.com/VikingMew/quickpython"
+homepage = "https://github.com/VikingMew/quickpython"
+documentation = "https://github.com/VikingMew/quickpython"
+readme = "README.md"
+keywords = ["python", "vm", "bytecode", "interpreter", "scripting"]
+categories = ["parser-implementations", "embedded", "virtualization"]
+exclude = [
+    "examples/*",
+    "test/*",
+    "tasks/*",
+    "spec/*",
+    ".github/*",
+    "quickpython-demo/*",
+    "quickpython-llm/*",
+]
 
 [lib]
 name = "quickpython"
