@@ -135,7 +135,7 @@ RustPython targets near-complete Python 3.14 compatibility — classes, generato
 
 ### vs [Monty](https://github.com/pydantic/monty)
 
-Monty (by the Pydantic team) is built for a specific scenario: sandboxing LLM-generated Python code. It offers snapshot/resume of interpreter state and strict security isolation — no filesystem or network access unless explicitly granted. QuickPython is a general-purpose embeddable VM, not a sandbox. It provides built-in modules (`os`, `json`, `re`) and an extension system designed for adding capabilities, not restricting them. Monty is also experimental (v0.0.3) with no class support yet. If you're building an AI agent runtime, look at Monty. If you're embedding Python scripting in a Rust application, QuickPython is a better fit.
+Monty (by the Pydantic team) is built for a specific scenario: sandboxing LLM-generated Python code. It offers snapshot/resume of interpreter state and strict security isolation — no filesystem or network access unless explicitly granted. QuickPython is a general-purpose embeddable VM, not a sandbox. It provides built-in modules (`os`, `json`, `re`) and an extension system designed for adding capabilities, not restricting them. Monty is also experimental (v0.0.3) with no class support yet. If you need Monty's security model and state management features, use Monty. Otherwise, QuickPython offers greater flexibility and customizability for general-purpose Python embedding in Rust applications.
 
 ### vs [MicroPython](https://github.com/micropython/micropython)
 
