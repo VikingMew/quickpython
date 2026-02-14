@@ -83,10 +83,10 @@ fn os_listdir(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    let entries = fs::read_dir(&path).map_err(|e| {
+    let entries = fs::read_dir(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to read directory '{}': {}", path, e),
+            format!("Failed to read directory '{}': {}", path, e),
         )
     })?;
 
@@ -95,7 +95,7 @@ fn os_listdir(args: Vec<Value>) -> Result<Value, Value> {
         let entry = entry.map_err(|e| {
             Value::error(
                 ExceptionType::OSError,
-                &format!("Failed to read entry: {}", e),
+                format!("Failed to read entry: {}", e),
             )
         })?;
 
@@ -120,10 +120,10 @@ fn os_mkdir(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    fs::create_dir(&path).map_err(|e| {
+    fs::create_dir(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to create directory '{}': {}", path, e),
+            format!("Failed to create directory '{}': {}", path, e),
         )
     })?;
 
@@ -142,10 +142,10 @@ fn os_makedirs(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    fs::create_dir_all(&path).map_err(|e| {
+    fs::create_dir_all(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to create directories '{}': {}", path, e),
+            format!("Failed to create directories '{}': {}", path, e),
         )
     })?;
 
@@ -164,10 +164,10 @@ fn os_remove(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    fs::remove_file(&path).map_err(|e| {
+    fs::remove_file(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to remove file '{}': {}", path, e),
+            format!("Failed to remove file '{}': {}", path, e),
         )
     })?;
 
@@ -186,10 +186,10 @@ fn os_rmdir(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    fs::remove_dir(&path).map_err(|e| {
+    fs::remove_dir(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to remove directory '{}': {}", path, e),
+            format!("Failed to remove directory '{}': {}", path, e),
         )
     })?;
 
@@ -212,10 +212,10 @@ fn os_rename(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "new path must be a string"))?;
 
-    fs::rename(&old, &new).map_err(|e| {
+    fs::rename(old, new).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to rename '{}' to '{}': {}", old, new, e),
+            format!("Failed to rename '{}' to '{}': {}", old, new, e),
         )
     })?;
 
@@ -226,7 +226,7 @@ fn os_getcwd(_args: Vec<Value>) -> Result<Value, Value> {
     let cwd = env::current_dir().map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to get current directory: {}", e),
+            format!("Failed to get current directory: {}", e),
         )
     })?;
 
@@ -245,10 +245,10 @@ fn os_chdir(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "path must be a string"))?;
 
-    env::set_current_dir(&path).map_err(|e| {
+    env::set_current_dir(path).map_err(|e| {
         Value::error(
             ExceptionType::OSError,
-            &format!("Failed to change directory to '{}': {}", path, e),
+            format!("Failed to change directory to '{}': {}", path, e),
         )
     })?;
 
@@ -275,7 +275,7 @@ fn os_getenv(args: Vec<Value>) -> Result<Value, Value> {
         Value::None
     };
 
-    match env::var(&key) {
+    match env::var(key) {
         Ok(value) => Ok(Value::String(value)),
         Err(_) => Ok(default),
     }
@@ -404,7 +404,7 @@ fn path_abspath(args: Vec<Value>) -> Result<Value, Value> {
             .map_err(|e| {
                 Value::error(
                     ExceptionType::OSError,
-                    &format!("Failed to get current directory: {}", e),
+                    format!("Failed to get current directory: {}", e),
                 )
             })?
             .join(path)

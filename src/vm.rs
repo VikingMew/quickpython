@@ -9,6 +9,7 @@ struct Frame {
     locals: Vec<Value>,
     ip: usize,
     code: ByteCode,
+    #[allow(dead_code)]
     stack_base: usize, // 此帧在栈上的起始位置
 }
 
@@ -94,39 +95,37 @@ impl VM {
             let result = self.execute_instruction(&instruction, &mut ip, globals);
 
             // Update current frame's ip (unless it's a Return instruction which sets ip to MAX)
-            if ip != usize::MAX {
-                if let Some(frame) = self.frames.last_mut() {
-                    frame.ip = ip;
-                }
+            if ip != usize::MAX
+                && let Some(frame) = self.frames.last_mut()
+            {
+                frame.ip = ip;
             }
 
             // Exception handling
             if let Err(exception) = result {
-                loop {
-                    if let Some(block) = self.blocks.pop() {
-                        match block.block_type {
-                            BlockType::Try { handler_offset } => {
-                                self.stack.truncate(block.stack_size);
-                                self.stack.push(exception);
-                                if let Some(frame) = self.frames.last_mut() {
-                                    frame.ip = handler_offset;
-                                }
-                                continue 'main_loop;
+                if let Some(block) = self.blocks.pop() {
+                    match block.block_type {
+                        BlockType::Try { handler_offset } => {
+                            self.stack.truncate(block.stack_size);
+                            self.stack.push(exception);
+                            if let Some(frame) = self.frames.last_mut() {
+                                frame.ip = handler_offset;
                             }
-                            BlockType::Finally { handler_offset } => {
-                                // For finally blocks, we need to execute the finally code
-                                // and then re-raise the exception
-                                self.stack.truncate(block.stack_size);
-                                self.stack.push(exception.clone()); // Push exception for EndFinally
-                                if let Some(frame) = self.frames.last_mut() {
-                                    frame.ip = handler_offset;
-                                }
-                                continue 'main_loop;
-                            }
+                            continue 'main_loop;
                         }
-                    } else {
-                        return Err(exception);
+                        BlockType::Finally { handler_offset } => {
+                            // For finally blocks, we need to execute the finally code
+                            // and then re-raise the exception
+                            self.stack.truncate(block.stack_size);
+                            self.stack.push(exception.clone()); // Push exception for EndFinally
+                            if let Some(frame) = self.frames.last_mut() {
+                                frame.ip = handler_offset;
+                            }
+                            continue 'main_loop;
+                        }
                     }
+                } else {
+                    return Err(exception);
                 }
             }
         }
@@ -160,7 +159,7 @@ impl VM {
         // 4. 未找到
         Err(Value::error(
             ExceptionType::RuntimeError,
-            &format!("No module named '{}'", name),
+            format!("No module named '{}'", name),
         ))
     }
 
@@ -524,7 +523,7 @@ impl VM {
                     .ok_or_else(|| {
                         Value::error(
                             ExceptionType::RuntimeError,
-                            &format!("name '{}' is not defined", name),
+                            format!("name '{}' is not defined", name),
                         )
                     })?
                     .clone();
@@ -548,7 +547,7 @@ impl VM {
                         .ok_or_else(|| {
                             Value::error(
                                 ExceptionType::RuntimeError,
-                                &format!("local variable {} not found", index),
+                                format!("local variable {} not found", index),
                             )
                         })?
                         .clone();
@@ -636,7 +635,7 @@ impl VM {
                         if args.len() != func.params.len() {
                             return Err(Value::error(
                                 ExceptionType::TypeError,
-                                &format!(
+                                format!(
                                     "{}() takes {} positional argument{} but {} {} given",
                                     func.name,
                                     func.params.len(),
@@ -706,7 +705,7 @@ impl VM {
                     Value::String(s) => s.parse::<i32>().map_err(|_| {
                         Value::error(
                             ExceptionType::ValueError,
-                            &format!("invalid literal for int() with base 10: '{}'", s),
+                            format!("invalid literal for int() with base 10: '{}'", s),
                         )
                     })?,
                     _ => {
@@ -737,7 +736,7 @@ impl VM {
                     Value::String(s) => s.parse::<f64>().map_err(|_| {
                         Value::error(
                             ExceptionType::ValueError,
-                            &format!("could not convert string to float: '{}'", s),
+                            format!("could not convert string to float: '{}'", s),
                         )
                     })?,
                     _ => {
@@ -943,7 +942,7 @@ impl VM {
                             self.stack.push(Value::None);
                         }
                         "pop" => {
-                            if args.len() != 0 {
+                            if !args.is_empty() {
                                 return Err(Value::error(
                                     ExceptionType::TypeError,
                                     "pop() takes no arguments",
@@ -960,13 +959,13 @@ impl VM {
                         _ => {
                             return Err(Value::error(
                                 ExceptionType::RuntimeError,
-                                &format!("'list' object has no attribute '{}'", method_name),
+                                format!("'list' object has no attribute '{}'", method_name),
                             ));
                         }
                     },
                     Value::Dict(dict) => match method_name.as_str() {
                         "keys" => {
-                            if args.len() != 0 {
+                            if !args.is_empty() {
                                 return Err(Value::error(
                                     ExceptionType::TypeError,
                                     "keys() takes no arguments",
@@ -987,7 +986,7 @@ impl VM {
                         _ => {
                             return Err(Value::error(
                                 ExceptionType::RuntimeError,
-                                &format!("'dict' object has no attribute '{}'", method_name),
+                                format!("'dict' object has no attribute '{}'", method_name),
                             ));
                         }
                     },
@@ -995,7 +994,7 @@ impl VM {
                         let attr = module.borrow().get_attribute(method_name).ok_or_else(|| {
                             Value::error(
                                 ExceptionType::RuntimeError,
-                                &format!("module has no attribute '{}'", method_name),
+                                format!("module has no attribute '{}'", method_name),
                             )
                         })?;
 
@@ -1070,7 +1069,7 @@ impl VM {
                             _ => {
                                 return Err(Value::error(
                                     ExceptionType::AttributeError,
-                                    &format!("'Match' object has no attribute '{}'", method_name),
+                                    format!("'Match' object has no attribute '{}'", method_name),
                                 ));
                             }
                         }
@@ -1078,7 +1077,7 @@ impl VM {
                     _ => {
                         return Err(Value::error(
                             ExceptionType::RuntimeError,
-                            &format!("object has no attribute '{}'", method_name),
+                            format!("object has no attribute '{}'", method_name),
                         ));
                     }
                 }
@@ -1103,22 +1102,24 @@ impl VM {
                 let mut args_count = 0;
 
                 // 先尝试3个参数
-                if stack_len >= 4 {
-                    if let Some(Value::Int(3)) = self.stack.get(stack_len - 4) {
-                        args_count = 3;
-                    }
+                if stack_len >= 4
+                    && let Some(Value::Int(3)) = self.stack.get(stack_len - 4)
+                {
+                    args_count = 3;
                 }
                 // 再尝试2个参数
-                if args_count == 0 && stack_len >= 3 {
-                    if let Some(Value::Int(2)) = self.stack.get(stack_len - 3) {
-                        args_count = 2;
-                    }
+                if args_count == 0
+                    && stack_len >= 3
+                    && let Some(Value::Int(2)) = self.stack.get(stack_len - 3)
+                {
+                    args_count = 2;
                 }
                 // 最后尝试1个参数
-                if args_count == 0 && stack_len >= 2 {
-                    if let Some(Value::Int(1)) = self.stack.get(stack_len - 2) {
-                        args_count = 1;
-                    }
+                if args_count == 0
+                    && stack_len >= 2
+                    && let Some(Value::Int(1)) = self.stack.get(stack_len - 2)
+                {
+                    args_count = 1;
                 }
 
                 if args_count == 0 {
@@ -1412,7 +1413,7 @@ impl VM {
                         let attr = module.borrow().get_attribute(attr_name).ok_or_else(|| {
                             Value::error(
                                 ExceptionType::RuntimeError,
-                                &format!("module has no attribute '{}'", attr_name),
+                                format!("module has no attribute '{}'", attr_name),
                             )
                         })?;
                         self.stack.push(attr);

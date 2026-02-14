@@ -23,8 +23,8 @@ fn json_loads(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "argument must be a string"))?;
 
-    let json_value: serde_json::Value = serde_json::from_str(&json_str)
-        .map_err(|e| Value::error(ExceptionType::ValueError, &format!("Invalid JSON: {}", e)))?;
+    let json_value: serde_json::Value = serde_json::from_str(json_str)
+        .map_err(|e| Value::error(ExceptionType::ValueError, format!("Invalid JSON: {}", e)))?;
 
     json_to_value(&json_value)
 }
@@ -41,7 +41,7 @@ fn json_dumps(args: Vec<Value>) -> Result<Value, Value> {
     let json_str = serde_json::to_string(&json_value).map_err(|e| {
         Value::error(
             ExceptionType::RuntimeError,
-            &format!("Failed to serialize: {}", e),
+            format!("Failed to serialize: {}", e),
         )
     })?;
 

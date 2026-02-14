@@ -40,15 +40,15 @@ fn re_match(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
     // match 只匹配字符串开头
-    if let Some(captures) = regex.captures(&text) {
+    if let Some(captures) = regex.captures(text) {
         let m = captures.get(0).unwrap();
         if m.start() == 0 {
             let groups: Vec<Option<String>> = captures
@@ -81,14 +81,14 @@ fn re_search(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
-    if let Some(captures) = regex.captures(&text) {
+    if let Some(captures) = regex.captures(text) {
         let m = captures.get(0).unwrap();
         let groups: Vec<Option<String>> = captures
             .iter()
@@ -119,15 +119,15 @@ fn re_findall(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
     let mut matches = Vec::new();
-    for captures in regex.captures_iter(&text) {
+    for captures in regex.captures_iter(text) {
         let m = captures.get(0).unwrap();
         matches.push(Value::String(m.as_str().to_string()));
     }
@@ -157,14 +157,14 @@ fn re_sub(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
-    let result = regex.replace_all(&text, &*repl).to_string();
+    let result = regex.replace_all(text, repl).to_string();
 
     Ok(Value::String(result))
 }
@@ -189,15 +189,15 @@ fn re_subn(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
-    let count = regex.find_iter(&text).count();
-    let result = regex.replace_all(&text, &*repl).to_string();
+    let count = regex.find_iter(text).count();
+    let result = regex.replace_all(text, repl).to_string();
 
     // 返回 (result, count) 元组
     Ok(Value::List(Rc::new(RefCell::new(
@@ -221,15 +221,15 @@ fn re_split(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "string must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 
     let parts: Vec<Value> = regex
-        .split(&text)
+        .split(text)
         .map(|s| Value::String(s.to_string()))
         .collect();
 
@@ -250,10 +250,10 @@ fn re_compile(args: Vec<Value>) -> Result<Value, Value> {
         .as_string()
         .ok_or_else(|| Value::error(ExceptionType::TypeError, "pattern must be a string"))?;
 
-    let regex = Regex::new(&pattern).map_err(|e| {
+    let regex = Regex::new(pattern).map_err(|e| {
         Value::error(
             ExceptionType::ValueError,
-            &format!("Invalid regex pattern: {}", e),
+            format!("Invalid regex pattern: {}", e),
         )
     })?;
 

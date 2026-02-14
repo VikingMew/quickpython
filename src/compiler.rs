@@ -46,7 +46,7 @@ impl Compiler {
                     }
                 }
 
-                return Ok(bytecode);
+                Ok(bytecode)
             }
             Err(_) => {
                 // 回退到表达式解析
@@ -300,8 +300,8 @@ impl Compiler {
 
                 if let Some(exc) = &raise.exc {
                     // 检查是否是简单的异常调用
-                    if let ast::Expr::Call(call) = &**exc {
-                        if let ast::Expr::Name(name) = &*call.func {
+                    if let ast::Expr::Call(call) = &**exc
+                        && let ast::Expr::Name(name) = &*call.func {
                             let exc_name = name.id.to_string();
                             let exc_type = match exc_name.as_str() {
                                 "ValueError" => ExceptionType::ValueError,
@@ -326,7 +326,6 @@ impl Compiler {
                             bytecode.push(Instruction::Raise);
                             return Ok(());
                         }
-                    }
 
                     // 其他情况：编译表达式，应该得到一个异常对象
                     self.compile_expr(exc, bytecode)?;

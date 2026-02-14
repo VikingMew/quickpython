@@ -35,6 +35,8 @@ enum Commands {
     },
 }
 
+#[cfg(not(test))]
+#[allow(dead_code)]
 fn main() {
     let cli = Cli::parse();
 

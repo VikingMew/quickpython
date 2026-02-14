@@ -154,7 +154,7 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
             _ => {
                 return Err(Value::error(
                     ExceptionType::TypeError,
-                    &format!("messages[{}] must be a dict", i),
+                    format!("messages[{}] must be a dict", i),
                 ));
             }
         };
@@ -166,13 +166,13 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
             Some(_) => {
                 return Err(Value::error(
                     ExceptionType::TypeError,
-                    &format!("messages[{}]['role'] must be a string", i),
+                    format!("messages[{}]['role'] must be a string", i),
                 ));
             }
             None => {
                 return Err(Value::error(
                     ExceptionType::KeyError,
-                    &format!("messages[{}] missing required key: 'role'", i),
+                    format!("messages[{}] missing required key: 'role'", i),
                 ));
             }
         };
@@ -184,13 +184,13 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
             Some(_) => {
                 return Err(Value::error(
                     ExceptionType::TypeError,
-                    &format!("messages[{}]['content'] must be a string", i),
+                    format!("messages[{}]['content'] must be a string", i),
                 ));
             }
             None => {
                 return Err(Value::error(
                     ExceptionType::KeyError,
-                    &format!("messages[{}] missing required key: 'content'", i),
+                    format!("messages[{}] missing required key: 'content'", i),
                 ));
             }
         };
@@ -223,7 +223,7 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
         Err(e) => {
             return Err(Value::error(
                 ExceptionType::RuntimeError,
-                &format!("Failed to create HTTP client: {}", e),
+                format!("Failed to create HTTP client: {}", e),
             ));
         }
     };
@@ -244,7 +244,7 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
         Err(e) => {
             return Err(Value::error(
                 ExceptionType::RuntimeError,
-                &format!("HTTP request failed: {}", e),
+                format!("HTTP request failed: {}", e),
             ));
         }
     };
@@ -254,7 +254,7 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
         Err(e) => {
             return Err(Value::error(
                 ExceptionType::RuntimeError,
-                &format!("Failed to read response: {}", e),
+                format!("Failed to read response: {}", e),
             ));
         }
     };
@@ -264,7 +264,7 @@ fn llm_chat(args: Vec<Value>) -> Result<Value, Value> {
         Err(e) => {
             return Err(Value::error(
                 ExceptionType::RuntimeError,
-                &format!("Failed to parse response: {}", e),
+                format!("Failed to parse response: {}", e),
             ));
         }
     };
