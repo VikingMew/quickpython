@@ -141,6 +141,31 @@ impl ExceptionType {
             ExceptionType::AttributeError => 9,
         }
     }
+
+    pub fn from_i32(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(ExceptionType::Exception),
+            1 => Some(ExceptionType::RuntimeError),
+            2 => Some(ExceptionType::IndexError),
+            3 => Some(ExceptionType::KeyError),
+            4 => Some(ExceptionType::ValueError),
+            5 => Some(ExceptionType::TypeError),
+            6 => Some(ExceptionType::ZeroDivisionError),
+            7 => Some(ExceptionType::IteratorError),
+            8 => Some(ExceptionType::OSError),
+            9 => Some(ExceptionType::AttributeError),
+            _ => None,
+        }
+    }
+
+    /// Check if this exception type matches the handler type
+    /// Exception matches all types (it's the base class)
+    pub fn matches(&self, handler: &ExceptionType) -> bool {
+        match handler {
+            ExceptionType::Exception => true, // Exception catches everything
+            _ => self == handler,             // Otherwise exact match
+        }
+    }
 }
 
 /// Traceback frame for exception

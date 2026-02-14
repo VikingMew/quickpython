@@ -1771,4 +1771,83 @@ print(x)
         let result = ctx.eval("10 % 0");
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_exception_hierarchy_exception_catches_valueerror() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+try:
+    raise ValueError("test")
+except Exception:
+    x = "caught"
+x
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("caught".to_string()));
+    }
+
+    #[test]
+    fn test_exception_hierarchy_exception_catches_all() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+count = 0
+try:
+    raise ValueError("test")
+except Exception:
+    count = count + 1
+try:
+    raise TypeError("test")
+except Exception:
+    count = count + 1
+try:
+    raise IndexError("test")
+except Exception:
+    count = count + 1
+count
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn test_exception_hierarchy_specific_handler_works() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+try:
+    raise ValueError("test")
+except ValueError:
+    x = "caught ValueError"
+x
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("caught ValueError".to_string()));
+    }
+
+    #[test]
+    fn test_exception_hierarchy_wrong_handler_doesnt_catch() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+try:
+    raise ValueError("test")
+except TypeError:
+    x = "caught TypeError"
+except ValueError:
+    x = "caught ValueError"
+x
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("caught ValueError".to_string()));
+    }
 }

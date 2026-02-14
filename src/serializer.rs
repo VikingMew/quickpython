@@ -171,6 +171,7 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::SetupTry(_)
         | Instruction::PopTry
         | Instruction::GetExceptionType
+        | Instruction::MatchException
         | Instruction::Dup
         | Instruction::SetupFinally(_)
         | Instruction::PopFinally

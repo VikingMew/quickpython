@@ -1417,6 +1417,39 @@ impl VM {
                 }
                 *ip += 1;
             }
+            Instruction::MatchException => {
+                // Stack: [exception_obj, handler_type_int]
+                let handler_type_int = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let exception = self
+                    .stack
+                    .last()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let handler_type = if let Value::Int(type_id) = handler_type_int {
+                    ExceptionType::from_i32(type_id).ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Invalid exception type")
+                    })?
+                } else {
+                    return Err(Value::error(
+                        ExceptionType::TypeError,
+                        "Expected integer for exception type",
+                    ));
+                };
+
+                if let Some(exc) = exception.as_exception() {
+                    let matches = exc.exception_type.matches(&handler_type);
+                    self.stack.push(Value::Bool(matches));
+                } else {
+                    return Err(Value::error(
+                        ExceptionType::TypeError,
+                        "Expected exception object",
+                    ));
+                }
+                *ip += 1;
+            }
             Instruction::Dup => {
                 let value = self
                     .stack

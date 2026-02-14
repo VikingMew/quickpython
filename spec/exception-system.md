@@ -14,16 +14,39 @@ QuickPython 的异常系统设计，支持基本的异常抛出、捕获和传�
 ## 异常类型层次
 
 ```
-BaseException
-├── Exception
-│   ├── RuntimeError
-│   │   ├── IndexError
-│   │   ├── KeyError
-│   │   ├── ValueError
-│   │   ├── TypeError
-│   │   └── ZeroDivisionError
-│   └── IteratorError (自定义，用于迭代器相关错误)
-└── SystemExit (可选，用于程序退出)
+Exception (基类，捕获所有异常)
+├── RuntimeError
+├── IndexError
+├── KeyError
+├── ValueError
+├── TypeError
+├── ZeroDivisionError
+├── IteratorError (自定义，用于迭代器相关错误)
+├── OSError
+└── AttributeError
+```
+
+### 异常类型匹配规则
+
+1. **Exception 是基类**：`except Exception:` 可以捕获所有异常类型
+2. **其他类型精确匹配**：`except ValueError:` 只捕获 ValueError
+3. **匹配顺序**：从上到下检查 except 子句，第一个匹配的会被执行
+
+示例：
+```python
+# Exception 捕获所有类型
+try:
+    raise ValueError("test")
+except Exception:
+    print("Caught")  # 会执行
+
+# 特定类型只捕获对应异常
+try:
+    raise ValueError("test")
+except TypeError:
+    print("Not caught")  # 不会执行
+except ValueError:
+    print("Caught")  # 会执行
 ```
 
 ### 第一阶段实现的异常类型
@@ -52,14 +75,58 @@ pub struct ExceptionValue {
 }
 
 pub enum ExceptionType {
-    Exception,
-    RuntimeError,
-    IndexError,
-    KeyError,
-    ValueError,
-    TypeError,
-    ZeroDivisionError,
-    IteratorError,
+    Exception,         // 基础异常
+    RuntimeError,      // 运行时错误
+    IndexError,        // 索引越界
+    KeyError,          // 键不存在
+    ValueError,        // 值错误
+    TypeError,         // 类型错误
+    ZeroDivisionError, // 除零错误
+    IteratorError,     // 迭代器错误（自定义）
+    OSError,           // 操作系统错误
+    AttributeError,    // 属性错误
+}
+
+impl ExceptionType {
+    pub fn as_i32(&self) -> i32 {
+        match self {
+            ExceptionType::Exception => 0,
+            ExceptionType::RuntimeError => 1,
+            ExceptionType::IndexError => 2,
+            ExceptionType::KeyError => 3,
+            ExceptionType::ValueError => 4,
+            ExceptionType::TypeError => 5,
+            ExceptionType::ZeroDivisionError => 6,
+            ExceptionType::IteratorError => 7,
+            ExceptionType::OSError => 8,
+            ExceptionType::AttributeError => 9,
+        }
+    }
+
+    pub fn from_i32(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(ExceptionType::Exception),
+            1 => Some(ExceptionType::RuntimeError),
+            2 => Some(ExceptionType::IndexError),
+            3 => Some(ExceptionType::KeyError),
+            4 => Some(ExceptionType::ValueError),
+            5 => Some(ExceptionType::TypeError),
+            6 => Some(ExceptionType::ZeroDivisionError),
+            7 => Some(ExceptionType::IteratorError),
+            8 => Some(ExceptionType::OSError),
+            9 => Some(ExceptionType::AttributeError),
+            _ => None,
+        }
+    }
+
+    /// Check if this exception type matches the handler type
+    /// Exception matches all types (it's the base class)
+    pub fn matches(&self, handler: &ExceptionType) -> bool {
+        match handler {
+            ExceptionType::Exception => true, // Exception catches everything
+            _ => self == handler,             // Otherwise exact match
+        }
+    }
 }
 
 pub struct TracebackFrame {
@@ -123,16 +190,18 @@ finally:
 
 ## 字节码指令
 
-### 新增指令（简化版，借鉴 QuickJS）
+### 新增指令
 
 ```rust
 pub enum Instruction {
     // ... 现有指令
     
-    // 异常相关（简化设计）
+    // 异常相关
     Raise,                    // 抛出异常，栈顶是异常对象
     SetupTry(usize),          // 设置 try 块，参数是 except 块的位置
     PopTry,                   // 移除 try 块（正常结束时）
+    GetExceptionType,         // 获取异常类型（用于类型检查）
+    MatchException,           // 检查异常类型是否匹配（支持继承）
     SetupFinally(usize),      // 设置 finally 块，参数是 finally 块的位置
     PopFinally,               // 移除 finally 块
     EndFinally,               // 结束 finally 块，处理异常重新抛出
@@ -140,6 +209,27 @@ pub enum Instruction {
     // 创建异常对象
     MakeException(ExceptionType), // 创建异常，栈顶是消息字符串
 }
+```
+
+### MatchException 指令
+
+用于检查异常类型是否匹配 except 子句，支持异常类型继承：
+
+- **输入栈**：`[exception_obj, handler_type_int]`
+- **输出栈**：`[exception_obj, bool]`
+- **行为**：
+  - 弹出 handler_type_int（期望的异常类型）
+  - 查看栈顶的 exception_obj（不弹出）
+  - 使用 `ExceptionType::matches()` 检查是否匹配
+  - 压入布尔结果（true 表示匹配）
+
+示例：
+```rust
+// 检查 ValueError 是否匹配 Exception
+Dup                          // 复制异常对象
+PushInt(0)                   // Exception 的类型 ID
+MatchException               // 检查匹配 -> true（Exception 捕获所有）
+JumpIfFalse(next_handler)    // 如果不匹配，跳到下一个 handler
 ```
 
 ### 异常处理流程（借鉴 QuickJS 的简洁性）
@@ -391,15 +481,12 @@ fn compile_try_except(&mut self, try_stmt: &ast::Try, bytecode: &mut ByteCode) -
             // 复制异常对象（用于类型检查）
             bytecode.push(Instruction::Dup);
             
-            // 获取异常类型
-            bytecode.push(Instruction::GetExceptionType);
-            
             // 压入期望的异常类型
             let expected_type = self.parse_exception_type(exc_type)?;
-            bytecode.push(Instruction::PushInt(expected_type as i32));
+            bytecode.push(Instruction::PushInt(expected_type.as_i32()));
             
-            // 比较类型
-            bytecode.push(Instruction::Eq);
+            // 检查类型匹配（支持继承）
+            bytecode.push(Instruction::MatchException);
             
             // 如果不匹配，跳到下一个 handler
             let next_handler_placeholder = bytecode.len();

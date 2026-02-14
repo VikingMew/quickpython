@@ -70,6 +70,7 @@ pub enum Instruction {
     SetupTry(usize),                            // 设置 try 块，参数是 except 块的位置
     PopTry,                                     // 移除 try 块（正常结束时）
     GetExceptionType,                           // 获取异常类型（用于类型检查）
+    MatchException,                             // 检查异常类型是否匹配（支持继承）
     Dup,                                        // 复制栈顶元素
     SetupFinally(usize),                        // 设置 finally 块，参数是 finally 块的位置
     PopFinally,                                 // 移除 finally 块

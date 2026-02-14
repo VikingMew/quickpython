@@ -664,15 +664,12 @@ impl Compiler {
                         // 复制异常对象
                         bytecode.push(Instruction::Dup);
 
-                        // 获取异常类型
-                        bytecode.push(Instruction::GetExceptionType);
-
                         // 压入期望的异常类型
                         let expected_type = self.parse_exception_type(exc_type)?;
                         bytecode.push(Instruction::PushInt(expected_type.as_i32()));
 
-                        // 比较类型
-                        bytecode.push(Instruction::Eq);
+                        // 检查类型匹配（支持继承）
+                        bytecode.push(Instruction::MatchException);
 
                         // 如果不匹配，跳到下一个 handler
                         let next_handler_placeholder = bytecode.len();
