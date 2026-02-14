@@ -301,31 +301,32 @@ impl Compiler {
                 if let Some(exc) = &raise.exc {
                     // 检查是否是简单的异常调用
                     if let ast::Expr::Call(call) = &**exc
-                        && let ast::Expr::Name(name) = &*call.func {
-                            let exc_name = name.id.to_string();
-                            let exc_type = match exc_name.as_str() {
-                                "ValueError" => ExceptionType::ValueError,
-                                "TypeError" => ExceptionType::TypeError,
-                                "IndexError" => ExceptionType::IndexError,
-                                "KeyError" => ExceptionType::KeyError,
-                                "ZeroDivisionError" => ExceptionType::ZeroDivisionError,
-                                "RuntimeError" => ExceptionType::RuntimeError,
-                                "IteratorError" => ExceptionType::IteratorError,
-                                "Exception" => ExceptionType::Exception,
-                                _ => return Err(format!("Unknown exception type: {}", exc_name)),
-                            };
+                        && let ast::Expr::Name(name) = &*call.func
+                    {
+                        let exc_name = name.id.to_string();
+                        let exc_type = match exc_name.as_str() {
+                            "ValueError" => ExceptionType::ValueError,
+                            "TypeError" => ExceptionType::TypeError,
+                            "IndexError" => ExceptionType::IndexError,
+                            "KeyError" => ExceptionType::KeyError,
+                            "ZeroDivisionError" => ExceptionType::ZeroDivisionError,
+                            "RuntimeError" => ExceptionType::RuntimeError,
+                            "IteratorError" => ExceptionType::IteratorError,
+                            "Exception" => ExceptionType::Exception,
+                            _ => return Err(format!("Unknown exception type: {}", exc_name)),
+                        };
 
-                            // 编译消息参数
-                            if call.args.len() != 1 {
-                                return Err("Exception requires exactly one argument".to_string());
-                            }
-                            self.compile_expr(&call.args[0], bytecode)?;
-
-                            // 创建异常对象
-                            bytecode.push(Instruction::MakeException(exc_type));
-                            bytecode.push(Instruction::Raise);
-                            return Ok(());
+                        // 编译消息参数
+                        if call.args.len() != 1 {
+                            return Err("Exception requires exactly one argument".to_string());
                         }
+                        self.compile_expr(&call.args[0], bytecode)?;
+
+                        // 创建异常对象
+                        bytecode.push(Instruction::MakeException(exc_type));
+                        bytecode.push(Instruction::Raise);
+                        return Ok(());
+                    }
 
                     // 其他情况：编译表达式，应该得到一个异常对象
                     self.compile_expr(exc, bytecode)?;
@@ -608,6 +609,21 @@ impl Compiler {
                 // 获取属性
                 let attr_name = attribute.attr.to_string();
                 bytecode.push(Instruction::GetAttr(attr_name));
+                Ok(())
+            }
+            ast::Expr::UnaryOp(unary) => {
+                match unary.op {
+                    ast::UnaryOp::USub => {
+                        // 一元负号：编译操作数，然后取反
+                        self.compile_expr(&unary.operand, bytecode)?;
+                        bytecode.push(Instruction::Negate);
+                    }
+                    ast::UnaryOp::UAdd => {
+                        // 一元正号：直接编译操作数（无操作）
+                        self.compile_expr(&unary.operand, bytecode)?;
+                    }
+                    _ => return Err(format!("Unsupported unary operator: {:?}", unary.op)),
+                }
                 Ok(())
             }
             _ => Err(format!("Unsupported expression: {:?}", expr)),

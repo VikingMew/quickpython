@@ -323,6 +323,23 @@ impl VM {
                 }
                 *ip += 1;
             }
+            Instruction::Negate => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                match value {
+                    Value::Int(n) => self.stack.push(Value::Int(-n)),
+                    Value::Float(f) => self.stack.push(Value::Float(-f)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "bad operand type for unary -",
+                        ));
+                    }
+                }
+                *ip += 1;
+            }
             Instruction::Eq => {
                 let b = self
                     .stack

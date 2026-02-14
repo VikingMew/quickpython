@@ -14,6 +14,7 @@ pub enum Instruction {
     Sub,
     Mul,
     Div,
+    Negate, // 一元负号
 
     // 比较运算
     Eq,

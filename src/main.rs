@@ -1679,4 +1679,59 @@ print(x)
         ctx.eval_bytecode(&restored).unwrap();
         assert_eq!(ctx.get("pi"), Some(Value::Float(3.14)));
     }
+
+    #[test]
+    fn test_unary_minus_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("-17").unwrap();
+        assert_eq!(result, Value::Int(-17));
+    }
+
+    #[test]
+    fn test_unary_minus_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("-3.14").unwrap();
+        assert_eq!(result, Value::Float(-3.14));
+    }
+
+    #[test]
+    fn test_unary_minus_variable() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 42").unwrap();
+        let result = ctx.eval("-x").unwrap();
+        assert_eq!(result, Value::Int(-42));
+    }
+
+    #[test]
+    fn test_unary_plus() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("+17").unwrap();
+        assert_eq!(result, Value::Int(17));
+    }
+
+    #[test]
+    fn test_double_negative() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("--17").unwrap();
+        assert_eq!(result, Value::Int(17));
+    }
+
+    #[test]
+    fn test_unary_minus_in_expression() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 + -5").unwrap();
+        assert_eq!(result, Value::Int(5));
+    }
+
+    #[test]
+    fn test_unary_minus_serialization() {
+        let source = "-42";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        let result = ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(result, Value::Int(-42));
+    }
 }
