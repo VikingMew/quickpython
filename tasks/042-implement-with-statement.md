@@ -1,8 +1,9 @@
 # Task 042: Implement `with` Statement (Context Managers)
 
-**Status**: Pending
+**Status**: Blocked - Requires class support
 **Created**: 2026-02-15
 **Priority**: High
+**Blocked by**: Need to implement classes with `__enter__` and `__exit__` methods first
 
 ## Overview
 

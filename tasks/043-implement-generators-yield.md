@@ -1,8 +1,9 @@
 # Task 043: Implement Generators and `yield`
 
-**Status**: Pending
+**Status**: Blocked - Requires advanced VM features
 **Created**: 2026-02-15
 **Priority**: High
+**Blocked by**: Need to implement frame state preservation and resumable execution
 
 ## Overview
 
