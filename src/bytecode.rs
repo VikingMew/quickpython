@@ -27,6 +27,8 @@ pub enum Instruction {
     Ge,
     Contains,    // Check if item in container (for 'in' operator)
     NotContains, // Check if item not in container (for 'not in' operator)
+    Is,          // Identity check (pointer equality)
+    IsNot,       // Negated identity check
 
     // 变量
     GetGlobal(String),

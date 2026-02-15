@@ -409,25 +409,8 @@ impl VM {
                     .pop()
                     .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
 
-                let result = match (a, b) {
-                    // 数值类型
-                    (Value::Int(a), Value::Int(b)) => a == b,
-                    (Value::Float(a), Value::Float(b)) => a == b,
-                    (Value::Int(a), Value::Float(b)) => (a as f64) == b,
-                    (Value::Float(a), Value::Int(b)) => a == (b as f64),
-
-                    // 字符串
-                    (Value::String(a), Value::String(b)) => a == b,
-
-                    // 布尔值
-                    (Value::Bool(a), Value::Bool(b)) => a == b,
-
-                    // None
-                    (Value::None, Value::None) => true,
-
-                    // 其他组合返回 false
-                    _ => false,
-                };
+                // Use Value's PartialEq implementation
+                let result = a == b;
 
                 self.stack.push(Value::Bool(result));
                 *ip += 1;
@@ -677,6 +660,51 @@ impl VM {
                     self.stack.push(Value::Bool(!b));
                 }
                 // ip already incremented by Contains
+            }
+            Instruction::Is => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    // None is always the same object
+                    (Value::None, Value::None) => true,
+
+                    // Booleans - True is True, False is False
+                    (Value::Bool(x), Value::Bool(y)) => x == y,
+
+                    // Small integers might be cached (simple implementation: just compare values)
+                    (Value::Int(x), Value::Int(y)) => x == y,
+
+                    // For reference types, compare pointers
+                    (Value::List(a), Value::List(b)) => Rc::ptr_eq(a, b),
+                    (Value::Dict(a), Value::Dict(b)) => Rc::ptr_eq(a, b),
+                    (Value::Tuple(a), Value::Tuple(b)) => Rc::ptr_eq(a, b),
+
+                    // Strings - compare by pointer (simple implementation)
+                    (Value::String(a), Value::String(b)) => a == b,
+
+                    // Different types or values are not identical
+                    _ => false,
+                };
+
+                self.stack.push(Value::Bool(result));
+                *ip += 1;
+            }
+            Instruction::IsNot => {
+                // Execute Is and negate the result
+                self.execute_instruction(&Instruction::Is, ip, globals)?;
+
+                let value = self.stack.pop().unwrap();
+                if let Value::Bool(b) = value {
+                    self.stack.push(Value::Bool(!b));
+                }
+                // ip already incremented by Is
             }
             Instruction::GetGlobal(name) => {
                 let value = globals

@@ -92,8 +92,11 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::Le => buffer.push(0x17),
         Instruction::Gt => buffer.push(0x18),
         Instruction::Ge => buffer.push(0x19),
-        Instruction::Contains | Instruction::NotContains => {
-            return Err("'in' operator instructions cannot be serialized yet".to_string());
+        Instruction::Contains | Instruction::NotContains | Instruction::Is | Instruction::IsNot => {
+            return Err(
+                "'in', 'not in', 'is', 'is not' operator instructions cannot be serialized yet"
+                    .to_string(),
+            );
         }
         Instruction::GetGlobal(name) => {
             buffer.push(0x20);

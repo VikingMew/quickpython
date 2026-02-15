@@ -7255,4 +7255,437 @@ for x in True:
         let result = ctx.eval(r#"result = None[0:2]"#);
         assert!(result.is_err());
     }
+
+    // Pass statement tests (Task 045)
+    #[test]
+    fn test_pass_in_function() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def empty_function():
+    pass
+
+result = empty_function()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::None));
+    }
+
+    #[test]
+    fn test_pass_in_if() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 5
+if x > 0:
+    pass
+else:
+    x = 0
+
+result = x
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_pass_in_loop() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+count = 0
+for i in range(5):
+    pass
+    count += 1
+
+result = count
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_pass_in_while() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 0
+while x < 3:
+    x += 1
+    pass
+
+result = x
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(3)));
+    }
+
+    #[test]
+    fn test_pass_in_try_except() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = "ok"
+try:
+    x = 1 / 0
+except ZeroDivisionError:
+    pass
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("ok".to_string())));
+    }
+
+    #[test]
+    fn test_multiple_pass_statements() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def multi_pass():
+    pass
+    pass
+    pass
+    return 42
+
+result = multi_pass()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(42)));
+    }
+
+    #[test]
+    fn test_pass_with_other_statements() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 10
+pass
+y = 20
+pass
+result = x + y
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(30)));
+    }
+
+    // Is and IsNot operators tests (Task 041)
+    #[test]
+    fn test_is_operator_none() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = None
+b = None
+result = a is b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_is_operator_different_lists() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = [1, 2, 3]
+b = [1, 2, 3]
+result = a is b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_is_operator_same_list() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = [1, 2, 3]
+b = a
+result = a is b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_is_not_operator() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = [1, 2]
+b = [1, 2]
+result = a is not b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_is_operator_integers() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = 5
+b = 5
+result = a is b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_is_operator_different_types() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 5 is "5"
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_is_vs_eq_lists() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = [1, 2, 3]
+b = [1, 2, 3]
+eq_result = a == b
+is_result = a is b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("eq_result"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("is_result"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_is_operator_booleans() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = True
+b = True
+c = False
+result1 = a is b
+result2 = a is c
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_is_operator_dicts() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = {"x": 1}
+b = {"x": 1}
+c = a
+result1 = a is b
+result2 = a is c
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_is_operator_tuples() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = (1, 2, 3)
+b = (1, 2, 3)
+c = a
+result1 = a is b
+result2 = a is c
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(true)));
+    }
+
+    // Dictionary comprehensions tests (Task 044)
+    #[test]
+    fn test_dict_comprehension_basic() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = {x: x * 2 for x in range(5)}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(dict.len(), 5);
+            assert_eq!(dict.get(&DictKey::Int(0)), Some(&Value::Int(0)));
+            assert_eq!(dict.get(&DictKey::Int(1)), Some(&Value::Int(2)));
+            assert_eq!(dict.get(&DictKey::Int(4)), Some(&Value::Int(8)));
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_with_condition() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = {x: x * x for x in range(10) if x % 2 == 0}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(dict.len(), 5);
+            assert_eq!(dict.get(&DictKey::Int(0)), Some(&Value::Int(0)));
+            assert_eq!(dict.get(&DictKey::Int(2)), Some(&Value::Int(4)));
+            assert_eq!(dict.get(&DictKey::Int(8)), Some(&Value::Int(64)));
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_string_keys() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+words = ["hello", "world"]
+result = {word: len(word) for word in words}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(
+                dict.get(&DictKey::String("hello".to_string())),
+                Some(&Value::Int(5))
+            );
+            assert_eq!(
+                dict.get(&DictKey::String("world".to_string())),
+                Some(&Value::Int(5))
+            );
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_from_tuples() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+pairs = [(1, "a"), (2, "b"), (3, "c")]
+result = {k: v for k, v in pairs}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(dict.len(), 3);
+            assert_eq!(
+                dict.get(&DictKey::Int(1)),
+                Some(&Value::String("a".to_string()))
+            );
+            assert_eq!(
+                dict.get(&DictKey::Int(2)),
+                Some(&Value::String("b".to_string()))
+            );
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_empty() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = {x: x for x in range(10) if x > 100}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(dict.len(), 0);
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_complex_expressions() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = {str(x): x * x + x for x in range(3)}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(
+                dict.get(&DictKey::String("0".to_string())),
+                Some(&Value::Int(0))
+            );
+            assert_eq!(
+                dict.get(&DictKey::String("1".to_string())),
+                Some(&Value::Int(2))
+            );
+            assert_eq!(
+                dict.get(&DictKey::String("2".to_string())),
+                Some(&Value::Int(6))
+            );
+        } else {
+            panic!("Expected dict");
+        }
+    }
+
+    #[test]
+    fn test_dict_comprehension_duplicate_keys() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = {x % 3: x for x in range(10)}
+"#,
+        )
+        .unwrap();
+
+        if let Some(Value::Dict(dict)) = ctx.get("result") {
+            let dict = dict.borrow();
+            assert_eq!(dict.len(), 3);
+            // Last occurrence wins
+            assert_eq!(dict.get(&DictKey::Int(0)), Some(&Value::Int(9)));
+            assert_eq!(dict.get(&DictKey::Int(1)), Some(&Value::Int(7)));
+            assert_eq!(dict.get(&DictKey::Int(2)), Some(&Value::Int(8)));
+        } else {
+            panic!("Expected dict");
+        }
+    }
 }

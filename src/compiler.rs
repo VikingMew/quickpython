@@ -645,7 +645,8 @@ impl Compiler {
                     ast::CmpOp::GtE => bytecode.push(Instruction::Ge),
                     ast::CmpOp::In => bytecode.push(Instruction::Contains),
                     ast::CmpOp::NotIn => bytecode.push(Instruction::NotContains),
-                    _ => return Err(format!("Unsupported comparison: {:?}", compare.ops[0])),
+                    ast::CmpOp::Is => bytecode.push(Instruction::Is),
+                    ast::CmpOp::IsNot => bytecode.push(Instruction::IsNot),
                 }
                 Ok(())
             }
@@ -843,6 +844,131 @@ impl Compiler {
                 bytecode[loop_start] = Instruction::ForIter(loop_end);
 
                 // 加载结果列表
+                bytecode.push(Instruction::GetGlobal(temp_var));
+
+                Ok(())
+            }
+            ast::Expr::DictComp(comp) => {
+                // 字典推导式: {key_expr: value_expr for var in iterable if condition}
+                // 转换为:
+                // _temp = {}
+                // for var in iterable:
+                //     if condition:
+                //         _temp[key_expr] = value_expr
+                // result = _temp
+
+                // 只支持单个 generator
+                if comp.generators.len() != 1 {
+                    return Err("Nested dict comprehensions not supported yet".to_string());
+                }
+
+                let generator = &comp.generators[0];
+
+                // 创建临时变量名
+                let temp_var = format!("_dictcomp_{}", self.temp_counter);
+                self.temp_counter += 1;
+
+                // 创建空字典并存储到临时变量
+                bytecode.push(Instruction::BuildDict(0));
+                bytecode.push(Instruction::SetGlobal(temp_var.clone()));
+                bytecode.push(Instruction::Pop);
+
+                // 编译迭代器表达式
+                self.compile_expr(&generator.iter, bytecode)?;
+                bytecode.push(Instruction::GetIter);
+
+                // 循环开始
+                let loop_start = bytecode.len();
+                bytecode.push(Instruction::ForIter(0)); // 占位符，稍后回填
+
+                // 绑定循环变量
+                match &generator.target {
+                    ast::Expr::Name(name) => {
+                        let var_name = name.id.to_string();
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::SetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::SetGlobal(var_name));
+                        }
+                        bytecode.push(Instruction::Pop);
+                    }
+                    ast::Expr::Tuple(tuple) => {
+                        // 支持元组解包: {k: v for k, v in pairs}
+                        let n = tuple.elts.len();
+                        bytecode.push(Instruction::UnpackSequence(n));
+
+                        for target_expr in tuple.elts.iter().rev() {
+                            match target_expr {
+                                ast::Expr::Name(name) => {
+                                    let var_name = name.id.to_string();
+                                    if let Some(&index) = self.local_vars.get(&var_name) {
+                                        bytecode.push(Instruction::SetLocal(index));
+                                    } else {
+                                        bytecode.push(Instruction::SetGlobal(var_name));
+                                    }
+                                    bytecode.push(Instruction::Pop);
+                                }
+                                _ => {
+                                    return Err(
+                                        "Unsupported unpacking target in dict comprehension"
+                                            .to_string(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        return Err(
+                            "Only simple variable names or tuples are supported in dict comprehensions"
+                                .to_string(),
+                        );
+                    }
+                }
+
+                // 编译过滤条件（if 子句）
+                let mut skip_setitem_jumps = Vec::new();
+                for filter in &generator.ifs {
+                    self.compile_expr(filter, bytecode)?;
+                    // 如果条件为 false，跳过 setitem
+                    let jump_pos = bytecode.len();
+                    bytecode.push(Instruction::JumpIfFalse(0)); // 占位符
+                    skip_setitem_jumps.push(jump_pos);
+                }
+
+                // 编译 value 表达式（先推到栈底）
+                self.compile_expr(&comp.value, bytecode)?;
+
+                // 加载临时字典
+                bytecode.push(Instruction::GetGlobal(temp_var.clone()));
+
+                // 编译 key 表达式（最后推到栈顶）
+                self.compile_expr(&comp.key, bytecode)?;
+
+                // 现在栈的顺序是（从底到顶）：value, dict, key
+                // SetItem 会: pop key, pop dict, peek value
+                // 设置字典项: dict[key] = value
+                bytecode.push(Instruction::SetItem);
+
+                // SetItem 会保留 value 在栈上，需要清理
+                bytecode.push(Instruction::Pop);
+
+                // 回填跳过 setitem 的跳转（如果有过滤条件）
+                let after_setitem = bytecode.len();
+                for jump_pos in skip_setitem_jumps {
+                    bytecode[jump_pos] = Instruction::JumpIfFalse(after_setitem);
+                }
+
+                // 跳回循环开始
+                bytecode.push(Instruction::Jump(loop_start));
+
+                // 循环结束，回填 ForIter 的跳转
+                let loop_end = bytecode.len();
+                bytecode[loop_start] = Instruction::ForIter(loop_end);
+
+                // 清理迭代器
+                bytecode.push(Instruction::Pop);
+
+                // 加载结果字典
                 bytecode.push(Instruction::GetGlobal(temp_var));
 
                 Ok(())
