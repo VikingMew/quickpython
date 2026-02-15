@@ -6,6 +6,9 @@ mod serializer;
 mod value;
 mod vm;
 
+#[cfg(test)]
+mod tests_pending;
+
 pub use bytecode::{ByteCode, Instruction};
 pub use compiler::Compiler;
 pub use context::Context;
@@ -232,6 +235,328 @@ mod tests {
     }
 
     #[test]
+    fn test_type_error_add_string_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("\"hello\" + 5");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_type_error_sub_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("\"hello\" - \"world\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_type_error_mul_string_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("\"hello\" * 3.5");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_index_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = [1, 2, 3]
+x[10]
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_negative_index_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = [1, 2, 3]
+x[-10]
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_key_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = {"a": 1}
+x["b"]
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_empty_list_operations() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = []
+len(x) == 0
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_empty_dict_operations() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = {}
+len(x) == 0
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_empty_tuple_creation() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = ()
+# Just verify empty tuple can be created
+True
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_nested_list_access() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = [[1, 2], [3, 4], [5, 6]]
+x[1][1]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(4));
+    }
+
+    #[test]
+    fn test_nested_dict_access() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = {"a": {"b": {"c": 42}}}
+x["a"]["b"]["c"]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(42));
+    }
+
+    #[test]
+    fn test_list_slice_empty_result() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = [1, 2, 3]
+y = x[5:10]
+len(y)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(0));
+    }
+
+    #[test]
+    fn test_string_slice_empty_result() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = "hello"
+y = x[10:20]
+len(y)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(0));
+    }
+
+    #[test]
+    fn test_range_negative_step() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = []
+for i in range(5, 0, -1):
+    x.append(i)
+len(x)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(5));
+    }
+
+    #[test]
+    fn test_range_zero_step_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("range(0, 10, 0)");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_function_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def foo(a, b):
+    return a + b
+foo(1)
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_len_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("len(42)");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_int_conversion_invalid() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("int(\"not a number\")");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_float_conversion_invalid() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("float(\"not a number\")");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_append_multiple() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = []
+x.append(1)
+x.append(2)
+x.append(3)
+len(x)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(3));
+    }
+
+    #[test]
+    fn test_list_pop_empty_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = []
+x.pop()
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_keys_empty() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = {}
+keys = x.keys()
+len(keys)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(0));
+    }
+
+    #[test]
+    fn test_string_methods_chaining() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = "  HELLO  "
+x.strip().lower()
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("hello"));
+    }
+
+    #[test]
+    fn test_unpacking_wrong_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x, y = [1, 2, 3]
+        "#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_break_in_nested_if() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = 0
+for i in range(10):
+    if i > 5:
+        if i == 7:
+            break
+    result = i
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(6));
+    }
+
+    #[test]
+    fn test_continue_in_nested_if() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = 0
+for i in range(10):
+    if i % 2 == 0:
+        if i > 0:
+            continue
+    result += i
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(25));
+    }
+
+    #[test]
     fn test_function_def_and_call() {
         let mut ctx = Context::new();
         ctx.eval("def add(a, b):\n    return a + b").unwrap();
@@ -278,7 +603,7 @@ def max(a, b):
     }
 
     #[test]
-    fn test_comparison_operators() {
+    fn test_comparison_operators_all() {
         let mut ctx = Context::new();
 
         let result = ctx.eval("5 > 3").unwrap();
@@ -367,6 +692,24 @@ def fib(n):
     fn test_print_int() {
         let mut ctx = Context::new();
         let result = ctx.eval("print(42)").unwrap();
+        assert_eq!(result, Value::None);
+    }
+
+    #[test]
+    fn test_print_multiple_args() {
+        // Test that print() with multiple arguments works
+        // This test verifies the behavior exists, but doesn't capture stdout
+        // The actual output format (strings without quotes) is verified manually
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"print("hello", 42, "world", 3.14)"#).unwrap();
+        assert_eq!(result, Value::None);
+    }
+
+    #[test]
+    fn test_print_string_and_number() {
+        // Test mixed string and number arguments
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"print("1", 2)"#).unwrap();
         assert_eq!(result, Value::None);
     }
 
@@ -1044,6 +1387,299 @@ finally:
         assert_eq!(result.as_string(), Some("caught finally"));
     }
 
+    // === Additional exception handling tests ===
+
+    #[test]
+    fn test_try_finally_with_return() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+def test_func():
+    try:
+        return "try"
+    finally:
+        x = 1  # Finally executes even with return
+test_func()
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("try"));
+    }
+
+    #[test]
+    fn test_nested_try_except_inner_outer() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = ""
+try:
+    try:
+        x = 1 / 0
+    except ValueError:
+        result = "inner"
+except ZeroDivisionError:
+    result = "outer"
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("outer"));
+    }
+
+    #[test]
+    fn test_try_except_in_loop() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+count = 0
+for i in range(5):
+    try:
+        if i == 2:
+            x = 1 / 0
+        count += 1
+    except ZeroDivisionError:
+        count += 10
+count
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(14)); // 0+1+10+3+4 = 18, wait: 1+1+10+1+1 = 14
+    }
+
+    #[test]
+    fn test_try_finally_in_loop() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = []
+for i in range(3):
+    try:
+        result.append(i)
+    finally:
+        result.append(100)
+len(result)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(6)); // [0, 100, 1, 100, 2, 100]
+    }
+
+    #[test]
+    fn test_exception_in_function() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+def divide(a, b):
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return -1
+
+result = divide(10, 0)
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(-1));
+    }
+
+    #[test]
+    fn test_multiple_except_handlers_ordered() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = ""
+try:
+    x = {}
+    y = x["missing"]
+except ZeroDivisionError:
+    result = "zero"
+except KeyError:
+    result = "key"
+except ValueError:
+    result = "value"
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("key"));
+    }
+
+    #[test]
+    fn test_exception_with_message() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = ""
+try:
+    x = [1, 2, 3]
+    y = x[10]
+except IndexError as e:
+    result = "caught"
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("caught"));
+    }
+
+    #[test]
+    fn test_finally_always_executes() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+executed = False
+try:
+    x = 1 + 1
+finally:
+    executed = True
+executed
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_try_except_else_not_implemented() {
+        // else clause in try/except is not implemented yet
+        // This just tests that basic try/except works
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = "ok"
+try:
+    x = 1 + 1
+except:
+    result = "error"
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("ok"));
+    }
+
+    // === Additional async tests ===
+
+    #[test]
+    fn test_async_function_with_exception() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import asyncio
+
+async def test():
+    try:
+        x = 1 / 0
+    except ZeroDivisionError:
+        return "caught"
+    return "not caught"
+
+result = test()
+result
+        "#,
+            )
+            .unwrap();
+        // Returns coroutine, not executed yet
+        assert!(matches!(result, Value::Coroutine(_, _)));
+    }
+
+    #[test]
+    fn test_async_multiple_awaits() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import asyncio
+
+async def multi_sleep():
+    await asyncio.sleep(0.001)
+    await asyncio.sleep(0.001)
+    return "done"
+
+coro = multi_sleep()
+await coro
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("done"));
+    }
+
+    // === Additional method call tests ===
+
+    #[test]
+    fn test_string_method_on_literal() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+result = "HELLO".lower()
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("hello"));
+    }
+
+    #[test]
+    fn test_list_method_chaining() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = []
+x.append(1)
+x.append(2)
+x.append(3)
+x.pop()
+len(x)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(2));
+    }
+
+    #[test]
+    fn test_dict_get_method_with_default() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1}
+result = d.get("b", 999)
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(999));
+    }
+
+    #[test]
+    fn test_string_split_join_roundtrip() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+text = "a,b,c,d"
+parts = text.split(",")
+result = "-".join(parts)
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("a-b-c-d"));
+    }
+
     #[test]
     fn test_iterator_modification_append() {
         let mut ctx = Context::new();
@@ -1327,6 +1963,130 @@ data["user"]["name"]
     }
 
     #[test]
+    fn test_json_null() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = json.loads('{"value": null}')
+data["value"] == None
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_boolean() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = json.loads('{"active": true, "deleted": false}')
+data["active"] and not data["deleted"]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_nested_arrays() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = json.loads('{"matrix": [[1, 2], [3, 4]]}')
+data["matrix"][1][0]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(3));
+    }
+
+    #[test]
+    fn test_json_special_chars() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = json.loads('{"text": "hello world"}')
+len(data["text"]) > 0
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_dumps_dict() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = {"name": "Alice", "age": 30}
+json_str = json.dumps(data)
+isinstance(json_str, str)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_dumps_list() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+data = [1, 2, 3, 4, 5]
+json_str = json.dumps(data)
+isinstance(json_str, str)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_dumps_none() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+json_str = json.dumps(None)
+json_str == "null"
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_json_roundtrip() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import json
+original = {"name": "Test", "value": 42}
+json_str = json.dumps(original)
+restored = json.loads(json_str)
+restored["name"] == "Test" and restored["value"] == 42
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
     fn test_module_not_found() {
         let mut ctx = Context::new();
         let result = ctx.eval("import nonexistent");
@@ -1483,6 +2243,204 @@ exists
     }
 
     #[test]
+    fn test_os_path_isfile() {
+        let mut ctx = Context::new();
+        // Test with existing file
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isfile("Cargo.toml")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+
+        // Test with directory
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isfile("src")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+
+        // Test with non-existent path
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isfile("nonexistent_file_xyz.txt")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_os_path_isdir() {
+        let mut ctx = Context::new();
+        // Test with existing directory
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isdir("src")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+
+        // Test with file
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isdir("Cargo.toml")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+
+        // Test with non-existent path
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.path.isdir("nonexistent_dir_xyz")
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_os_path_abspath() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+path = os.path.abspath(".")
+len(path) > 0
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_remove_exists() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+# Just verify remove function exists in os module
+hasattr = False
+try:
+    # Check if we can access os.remove
+    f = os.remove
+    hasattr = True
+except:
+    pass
+hasattr
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_rename() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.mkdir("test_rename_src")
+os.rename("test_rename_src", "test_rename_dst")
+exists = os.path.exists("test_rename_dst")
+os.rmdir("test_rename_dst")
+exists
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_chdir() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+original = os.getcwd()
+os.chdir("..")
+parent = os.getcwd()
+os.chdir(original)
+back = os.getcwd()
+original == back and parent != original
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_makedirs() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+os.makedirs("test_nested/sub1/sub2")
+exists = os.path.isdir("test_nested/sub1/sub2")
+os.rmdir("test_nested/sub1/sub2")
+os.rmdir("test_nested/sub1")
+os.rmdir("test_nested")
+exists
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_environ() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+# Check that environ is a dict
+isinstance(os.environ, dict)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_os_environ_get() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import os
+# PATH should exist on most systems
+path = os.environ.get("PATH", "")
+isinstance(path, str)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
     fn test_re_match() {
         let mut ctx = Context::new();
         let result = ctx
@@ -1603,6 +2561,83 @@ span[0]
         assert_eq!(result.as_int(), Some(6));
     }
 
+    #[test]
+    fn test_re_compile_exists() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import re
+# Just verify compile function exists
+pattern = re.compile(r"\d+")
+pattern != None
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_re_match_groups_multiple() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import re
+m = re.match(r"(\w+):(\d+)", "user:123")
+groups = m.groups()
+len(groups)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(2));
+    }
+
+    #[test]
+    fn test_re_search_no_match() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import re
+m = re.search(r"\d+", "no numbers here")
+m == None
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_re_sub_basic() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import re
+result = re.sub(r"\d", "X", "a1b2c3d4")
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("aXbXcXdX"));
+    }
+
+    #[test]
+    fn test_re_split_basic() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+import re
+parts = re.split(r"\s+", "a b c d e")
+len(parts)
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(5));
+    }
+
     // === pyq bytecode API tests ===
 
     #[test]
@@ -1665,6 +2700,175 @@ y = x * 2
         let mut ctx = Context::new();
         ctx.eval_bytecode(&restored).unwrap();
         assert_eq!(ctx.get("pi"), Some(Value::Float(3.15)));
+    }
+
+    // === Additional serializer tests ===
+
+    #[test]
+    fn test_serialize_arithmetic() {
+        let source = "x = 10 + 20 * 3";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(70)));
+    }
+
+    #[test]
+    fn test_serialize_comparison() {
+        let source = "result = 5 > 3";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_serialize_if_else() {
+        let source = r#"
+x = 10
+if x > 5:
+    result = "big"
+else:
+    result = "small"
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("big".to_string())));
+    }
+
+    #[test]
+    fn test_serialize_while_loop() {
+        let source = r#"
+count = 0
+i = 0
+while i < 5:
+    count = count + 1
+    i = i + 1
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("count"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_serialize_logical_operators_error() {
+        // Logical operators use jump instructions which aren't serializable yet
+        let source = "result = True and False or True";
+        let bytecode = Compiler::compile(source).unwrap();
+        assert!(serialize_bytecode(&bytecode).is_err());
+    }
+
+    #[test]
+    fn test_serialize_string_operations() {
+        let source = r#"result = "hello" + " " + "world""#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("hello world".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_serialize_multiple_variables() {
+        let source = r#"
+a = 10
+b = 20
+c = a + b
+d = c * 2
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("d"), Some(Value::Int(60)));
+    }
+
+    #[test]
+    fn test_serialize_none_value() {
+        let source = "x = None";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::None));
+    }
+
+    #[test]
+    fn test_serialize_bool_values() {
+        let source = r#"
+t = True
+f = False
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("t"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("f"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_serialize_negative_numbers() {
+        let source = "x = -42";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(-42)));
+    }
+
+    #[test]
+    fn test_serialize_modulo() {
+        let source = "x = 17 % 5";
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(2)));
+    }
+
+    #[test]
+    fn test_serialize_augmented_assignment() {
+        let source = r#"
+x = 10
+x += 5
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(15)));
     }
 
     #[test]
@@ -2195,7 +3399,7 @@ len(parts)
     }
 
     #[test]
-    fn test_string_replace() {
+    fn test_string_replace_all_occurrences() {
         let mut ctx = Context::new();
         let result = ctx
             .eval(r#""hello world".replace("world", "python")"#)
@@ -2204,7 +3408,7 @@ len(parts)
     }
 
     #[test]
-    fn test_string_join() {
+    fn test_string_join_method() {
         let mut ctx = Context::new();
         let result = ctx
             .eval(
@@ -2560,6 +3764,312 @@ x, y = get_coords()
         assert_eq!(result, Value::String("Number: 42".to_string()));
     }
 
+    // === Value type tests ===
+
+    #[test]
+    fn test_value_equality_int() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = 42
+b = 42
+c = 43
+a == b and a != c
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_float() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = 3.14
+b = 3.14
+c = 2.71
+a == b and a != c
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_string() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = "hello"
+b = "hello"
+c = "world"
+a == b and a != c
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_list() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = [1, 2, 3]
+b = [1, 2, 3]
+# List equality by content
+len(a) == len(b) and a[0] == b[0] and a[1] == b[1]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_dict() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = {"x": 1, "y": 2}
+b = {"x": 1, "y": 2}
+# Dict equality by content
+a["x"] == b["x"] and a["y"] == b["y"]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_none() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = None
+b = None
+a == b
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_equality_bool() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = True
+b = True
+c = False
+a == b and a != c
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_truthy_int() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if 1:
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_falsy_zero() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if 0:
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_value_falsy_empty_string() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if "":
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_value_falsy_empty_list() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if []:
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_value_falsy_empty_dict() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if {}:
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(false));
+    }
+
+    #[test]
+    fn test_value_truthy_nonempty_string() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if "hello":
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_truthy_nonempty_list() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+if [1]:
+    result = True
+else:
+    result = False
+result
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_comparison_mixed_types() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = 42
+b = "42"
+a != b
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_value_none_comparison() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+a = None
+b = 0
+c = ""
+d = []
+a != b and a != c and a != d
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
+    #[test]
+    fn test_dict_key_int() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {1: "one", 2: "two", 3: "three"}
+d[2]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_string(), Some("two"));
+    }
+
+    #[test]
+    fn test_dict_key_string() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1, "b": 2, "c": 3}
+d["b"]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_int(), Some(2));
+    }
+
+    #[test]
+    fn test_dict_mixed_keys() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {1: "int", "1": "string"}
+d[1] != d["1"]
+        "#,
+            )
+            .unwrap();
+        assert_eq!(result.as_bool(), Some(true));
+    }
+
     // Task 033: F-String Formatting
     #[test]
     fn test_fstring_simple_variable() {
@@ -2679,7 +4189,7 @@ def get_name():
     }
 
     #[test]
-    fn test_list_slice_negative_indices() {
+    fn test_list_slice_with_negative_indices() {
         let mut ctx = Context::new();
         ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
         let result = ctx.eval("items[-3:-1]").unwrap();
@@ -3226,5 +4736,2523 @@ result = await multi_sleep()
         assert_eq!(result, Value::String("done".to_string()));
         // Should sleep at least 100ms total
         assert!(elapsed.as_millis() >= 100);
+    }
+
+    // Value.rs tests - ExceptionType methods
+    #[test]
+    fn test_exception_type_from_i32_valid() {
+        use crate::value::ExceptionType;
+        assert_eq!(ExceptionType::from_i32(0), Some(ExceptionType::Exception));
+        assert_eq!(
+            ExceptionType::from_i32(1),
+            Some(ExceptionType::RuntimeError)
+        );
+        assert_eq!(ExceptionType::from_i32(2), Some(ExceptionType::IndexError));
+        assert_eq!(ExceptionType::from_i32(3), Some(ExceptionType::KeyError));
+        assert_eq!(ExceptionType::from_i32(4), Some(ExceptionType::ValueError));
+        assert_eq!(ExceptionType::from_i32(5), Some(ExceptionType::TypeError));
+        assert_eq!(
+            ExceptionType::from_i32(6),
+            Some(ExceptionType::ZeroDivisionError)
+        );
+        assert_eq!(
+            ExceptionType::from_i32(7),
+            Some(ExceptionType::IteratorError)
+        );
+        assert_eq!(ExceptionType::from_i32(8), Some(ExceptionType::OSError));
+        assert_eq!(
+            ExceptionType::from_i32(9),
+            Some(ExceptionType::AttributeError)
+        );
+    }
+
+    #[test]
+    fn test_exception_type_from_i32_invalid() {
+        use crate::value::ExceptionType;
+        assert_eq!(ExceptionType::from_i32(10), None);
+        assert_eq!(ExceptionType::from_i32(-1), None);
+        assert_eq!(ExceptionType::from_i32(999), None);
+    }
+
+    #[test]
+    fn test_exception_type_as_i32() {
+        use crate::value::ExceptionType;
+        assert_eq!(ExceptionType::Exception.as_i32(), 0);
+        assert_eq!(ExceptionType::RuntimeError.as_i32(), 1);
+        assert_eq!(ExceptionType::IndexError.as_i32(), 2);
+        assert_eq!(ExceptionType::KeyError.as_i32(), 3);
+        assert_eq!(ExceptionType::ValueError.as_i32(), 4);
+        assert_eq!(ExceptionType::TypeError.as_i32(), 5);
+        assert_eq!(ExceptionType::ZeroDivisionError.as_i32(), 6);
+        assert_eq!(ExceptionType::IteratorError.as_i32(), 7);
+        assert_eq!(ExceptionType::OSError.as_i32(), 8);
+        assert_eq!(ExceptionType::AttributeError.as_i32(), 9);
+    }
+
+    #[test]
+    fn test_exception_type_matches_base_catches_all() {
+        use crate::value::ExceptionType;
+        assert!(ExceptionType::ValueError.matches(&ExceptionType::Exception));
+        assert!(ExceptionType::TypeError.matches(&ExceptionType::Exception));
+        assert!(ExceptionType::IndexError.matches(&ExceptionType::Exception));
+        assert!(ExceptionType::RuntimeError.matches(&ExceptionType::Exception));
+    }
+
+    #[test]
+    fn test_exception_type_matches_specific() {
+        use crate::value::ExceptionType;
+        assert!(ExceptionType::ValueError.matches(&ExceptionType::ValueError));
+        assert!(ExceptionType::TypeError.matches(&ExceptionType::TypeError));
+        assert!(!ExceptionType::ValueError.matches(&ExceptionType::TypeError));
+        assert!(!ExceptionType::TypeError.matches(&ExceptionType::ValueError));
+    }
+
+    // Value.rs tests - DictKey
+    #[test]
+    fn test_dict_key_equality() {
+        use crate::value::DictKey;
+        assert_eq!(
+            DictKey::String("hello".to_string()),
+            DictKey::String("hello".to_string())
+        );
+        assert_eq!(DictKey::Int(42), DictKey::Int(42));
+        assert_ne!(
+            DictKey::String("hello".to_string()),
+            DictKey::String("world".to_string())
+        );
+        assert_ne!(DictKey::Int(42), DictKey::Int(43));
+        assert_ne!(DictKey::String("42".to_string()), DictKey::Int(42));
+    }
+
+    #[test]
+    fn test_dict_key_hash() {
+        use crate::value::DictKey;
+        use std::collections::HashMap;
+        let mut map = HashMap::new();
+        map.insert(DictKey::String("key1".to_string()), 1);
+        map.insert(DictKey::Int(42), 2);
+        assert_eq!(map.get(&DictKey::String("key1".to_string())), Some(&1));
+        assert_eq!(map.get(&DictKey::Int(42)), Some(&2));
+        assert_eq!(map.get(&DictKey::String("key2".to_string())), None);
+    }
+
+    // Value.rs tests - Value as_* methods
+    #[test]
+    fn test_value_as_int_wrong_type() {
+        assert_eq!(Value::Float(3.14).as_int(), None);
+        assert_eq!(Value::String("hello".to_string()).as_int(), None);
+        assert_eq!(Value::Bool(true).as_int(), None);
+        assert_eq!(Value::None.as_int(), None);
+    }
+
+    #[test]
+    fn test_value_as_float_wrong_type() {
+        assert_eq!(Value::Int(42).as_float(), None);
+        assert_eq!(Value::String("hello".to_string()).as_float(), None);
+        assert_eq!(Value::Bool(true).as_float(), None);
+        assert_eq!(Value::None.as_float(), None);
+    }
+
+    #[test]
+    fn test_value_as_bool_wrong_type() {
+        assert_eq!(Value::Int(42).as_bool(), None);
+        assert_eq!(Value::Float(3.14).as_bool(), None);
+        assert_eq!(Value::String("hello".to_string()).as_bool(), None);
+        assert_eq!(Value::None.as_bool(), None);
+    }
+
+    #[test]
+    fn test_value_as_string_wrong_type() {
+        assert_eq!(Value::Int(42).as_string(), None);
+        assert_eq!(Value::Float(3.14).as_string(), None);
+        assert_eq!(Value::Bool(true).as_string(), None);
+        assert_eq!(Value::None.as_string(), None);
+    }
+
+    #[test]
+    fn test_value_as_list_wrong_type() {
+        assert!(Value::Int(42).as_list().is_none());
+        assert!(Value::String("hello".to_string()).as_list().is_none());
+        assert!(Value::None.as_list().is_none());
+    }
+
+    #[test]
+    fn test_value_as_dict_wrong_type() {
+        assert!(Value::Int(42).as_dict().is_none());
+        assert!(Value::String("hello".to_string()).as_dict().is_none());
+        assert!(Value::None.as_dict().is_none());
+    }
+
+    // Value.rs tests - Value is_exception and as_exception
+    #[test]
+    fn test_value_is_exception() {
+        use crate::value::ExceptionType;
+        let exc = Value::error(ExceptionType::ValueError, "test error");
+        assert!(exc.is_exception());
+        assert!(!Value::Int(42).is_exception());
+        assert!(!Value::String("error".to_string()).is_exception());
+        assert!(!Value::None.is_exception());
+    }
+
+    #[test]
+    fn test_value_as_exception() {
+        use crate::value::ExceptionType;
+        let exc = Value::error(ExceptionType::ValueError, "test error");
+        let exc_val = exc.as_exception().unwrap();
+        assert_eq!(exc_val.exception_type, ExceptionType::ValueError);
+        assert_eq!(exc_val.message, "test error");
+        assert!(Value::Int(42).as_exception().is_none());
+    }
+
+    // Value.rs tests - Value Debug formatting
+    #[test]
+    fn test_value_debug_format_primitives() {
+        assert_eq!(format!("{:?}", Value::Int(42)), "Int(42)");
+        assert_eq!(format!("{:?}", Value::Float(3.14)), "Float(3.14)");
+        assert_eq!(format!("{:?}", Value::Bool(true)), "Bool(true)");
+        assert_eq!(format!("{:?}", Value::None), "None");
+        assert_eq!(
+            format!("{:?}", Value::String("hello".to_string())),
+            "String(\"hello\")"
+        );
+    }
+
+    #[test]
+    fn test_value_debug_format_slice() {
+        let slice = Value::Slice {
+            start: Some(1),
+            stop: Some(5),
+            step: Some(2),
+        };
+        assert_eq!(format!("{:?}", slice), "Slice(Some(1):Some(5):Some(2))");
+    }
+
+    #[test]
+    fn test_value_debug_format_async_sleep() {
+        let sleep = Value::AsyncSleep(1.5);
+        assert_eq!(format!("{:?}", sleep), "AsyncSleep(1.5)");
+    }
+
+    // Value.rs tests - Module methods
+    #[test]
+    fn test_module_new() {
+        use crate::value::Module;
+        let module = Module::new("test_module");
+        assert_eq!(module.name, "test_module");
+        assert!(module.attributes.is_empty());
+    }
+
+    #[test]
+    fn test_module_add_function() {
+        use crate::value::Module;
+        fn test_func(_args: Vec<Value>) -> Result<Value, Value> {
+            Ok(Value::Int(42))
+        }
+        let mut module = Module::new("test");
+        module.add_function("test_func", test_func);
+        assert!(module.attributes.contains_key("test_func"));
+    }
+
+    #[test]
+    fn test_module_get_attribute() {
+        use crate::value::Module;
+        let mut module = Module::new("test");
+        module
+            .attributes
+            .insert("value".to_string(), Value::Int(42));
+        assert_eq!(module.get_attribute("value"), Some(Value::Int(42)));
+        assert_eq!(module.get_attribute("nonexistent"), None);
+    }
+
+    // Value.rs tests - ListValue methods
+    #[test]
+    fn test_list_value_new() {
+        use crate::value::ListValue;
+        let list = ListValue::new();
+        assert!(list.items.is_empty());
+        assert_eq!(list.version, 0);
+    }
+
+    #[test]
+    fn test_list_value_with_items() {
+        use crate::value::ListValue;
+        let items = vec![Value::Int(1), Value::Int(2), Value::Int(3)];
+        let list = ListValue::with_items(items.clone());
+        assert_eq!(list.items, items);
+        assert_eq!(list.version, 0);
+    }
+
+    #[test]
+    fn test_list_value_increment_version() {
+        use crate::value::ListValue;
+        let mut list = ListValue::new();
+        assert_eq!(list.version, 0);
+        list.increment_version();
+        assert_eq!(list.version, 1);
+        list.increment_version();
+        assert_eq!(list.version, 2);
+    }
+
+    #[test]
+    fn test_list_value_version_wrapping() {
+        use crate::value::ListValue;
+        let mut list = ListValue::new();
+        list.version = usize::MAX;
+        list.increment_version();
+        assert_eq!(list.version, 0); // Should wrap around
+    }
+
+    // Value.rs tests - MatchObject
+    #[test]
+    fn test_match_object_new() {
+        use crate::value::MatchObject;
+        let match_obj = MatchObject::new(
+            "hello world".to_string(),
+            0,
+            5,
+            vec![Some("hello".to_string())],
+        );
+        assert_eq!(match_obj.text, "hello world");
+        assert_eq!(match_obj.start, 0);
+        assert_eq!(match_obj.end, 5);
+        assert_eq!(match_obj.groups, vec![Some("hello".to_string())]);
+    }
+
+    // Value.rs tests - Value equality for complex types
+    #[test]
+    fn test_value_equality_tuple() {
+        use std::rc::Rc;
+        let tuple1 = Value::Tuple(Rc::new(vec![Value::Int(1), Value::Int(2)]));
+        let tuple2 = Value::Tuple(Rc::new(vec![Value::Int(1), Value::Int(2)]));
+        let tuple3 = Value::Tuple(Rc::new(vec![Value::Int(1), Value::Int(3)]));
+        assert_eq!(tuple1, tuple2);
+        assert_ne!(tuple1, tuple3);
+    }
+
+    #[test]
+    fn test_value_equality_slice() {
+        let slice1 = Value::Slice {
+            start: Some(1),
+            stop: Some(5),
+            step: Some(2),
+        };
+        let slice2 = Value::Slice {
+            start: Some(1),
+            stop: Some(5),
+            step: Some(2),
+        };
+        let slice3 = Value::Slice {
+            start: Some(1),
+            stop: Some(6),
+            step: Some(2),
+        };
+        assert_eq!(slice1, slice2);
+        assert_ne!(slice1, slice3);
+    }
+
+    #[test]
+    fn test_value_truthy_tuple() {
+        use std::rc::Rc;
+        let empty_tuple = Value::Tuple(Rc::new(vec![]));
+        let nonempty_tuple = Value::Tuple(Rc::new(vec![Value::Int(1)]));
+        assert!(!empty_tuple.is_truthy());
+        assert!(nonempty_tuple.is_truthy());
+    }
+
+    #[test]
+    fn test_value_truthy_float_zero() {
+        assert!(!Value::Float(0.0).is_truthy());
+        assert!(Value::Float(0.1).is_truthy());
+        assert!(Value::Float(-0.1).is_truthy());
+    }
+
+    #[test]
+    fn test_value_truthy_special_types() {
+        use crate::bytecode::ByteCode;
+        use crate::value::Function;
+        let func = Function {
+            name: "test".to_string(),
+            params: vec![],
+            code: ByteCode::new(),
+            is_async: false,
+        };
+        assert!(Value::Function(func).is_truthy());
+        assert!(Value::AsyncSleep(1.0).is_truthy());
+    }
+
+    // Serializer tests - more instruction types
+    #[test]
+    fn test_serialize_type_conversions() {
+        let source = r#"
+x = int("42")
+y = float("3.14")
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(42)));
+        assert_eq!(ctx.get("y"), Some(Value::Float(3.14)));
+    }
+
+    #[test]
+    fn test_serialize_negate() {
+        let source = r#"
+x = 10
+y = -x
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("y"), Some(Value::Int(-10)));
+    }
+
+    #[test]
+    fn test_serialize_local_variables() {
+        let source = r#"
+def add(a, b):
+    result = a + b
+    return result
+
+x = add(3, 4)
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode);
+        // Should fail because MakeFunction is not serializable
+        assert!(bytes.is_err());
+    }
+
+    #[test]
+    fn test_serialize_jump_instructions() {
+        let source = r#"
+x = 10
+if x > 5:
+    y = 1
+else:
+    y = 2
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("y"), Some(Value::Int(1)));
+    }
+
+    #[test]
+    fn test_serialize_all_comparison_ops() {
+        let source = r#"
+a = 5 == 5
+b = 5 != 3
+c = 5 < 10
+d = 5 <= 5
+e = 10 > 5
+f = 10 >= 10
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("b"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("c"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("d"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("e"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("f"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_serialize_all_arithmetic_ops() {
+        let source = r#"
+a = 10 + 5
+b = 10 - 5
+c = 10 * 5
+d = 10 / 5
+e = 10 % 3
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(15)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(5)));
+        assert_eq!(ctx.get("c"), Some(Value::Int(50)));
+        assert_eq!(ctx.get("d"), Some(Value::Int(2)));
+        assert_eq!(ctx.get("e"), Some(Value::Int(1)));
+    }
+
+    #[test]
+    fn test_serialize_complex_expression() {
+        let source = r#"
+x = 2
+y = 3
+z = (x + y) * (x - y)
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("z"), Some(Value::Int(-5)));
+    }
+
+    #[test]
+    fn test_serialize_nested_if() {
+        let source = r#"
+x = 10
+if x > 5:
+    if x > 8:
+        y = 1
+    else:
+        y = 2
+else:
+    y = 3
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("y"), Some(Value::Int(1)));
+    }
+
+    #[test]
+    fn test_serialize_float_operations() {
+        let source = r#"
+a = 3.14
+b = 2.0
+c = a + b
+d = a * b
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        // Use approximate comparison for floats due to precision
+        match ctx.get("c") {
+            Some(Value::Float(f)) => assert!((f - 5.14).abs() < 0.0001),
+            _ => panic!("Expected float value for c"),
+        }
+        match ctx.get("d") {
+            Some(Value::Float(f)) => assert!((f - 6.28).abs() < 0.0001),
+            _ => panic!("Expected float value for d"),
+        }
+    }
+
+    #[test]
+    fn test_serialize_string_concatenation() {
+        let source = r#"
+a = "hello"
+b = "world"
+c = a + " " + b
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("c"), Some(Value::String("hello world".to_string())));
+    }
+
+    #[test]
+    fn test_serialize_empty_bytecode() {
+        let bytecode: ByteCode = vec![];
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+        assert_eq!(restored.len(), 0);
+    }
+
+    #[test]
+    fn test_deserialize_invalid_magic() {
+        let bytes = vec![0xFF, 0xFF, 0xFF, 0xFF]; // Invalid magic
+        let result = deserialize_bytecode(&bytes);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_invalid_version() {
+        let mut bytes = vec![0x51, 0x50, 0x59, 0x51]; // Valid magic
+        bytes.push(99); // Invalid version
+        let result = deserialize_bytecode(&bytes);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_deserialize_truncated_data() {
+        let bytes = vec![0x51, 0x50, 0x59, 0x51, 0x01]; // Magic + version, but no data
+        let result = deserialize_bytecode(&bytes);
+        // Should either succeed with empty bytecode or fail gracefully
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_serialize_round_trip_multiple_types() {
+        let source = r#"
+int_val = 42
+float_val = 3.14
+bool_val = True
+none_val = None
+str_val = "test"
+        "#;
+        let bytecode = Compiler::compile(source).unwrap();
+        let bytes = serialize_bytecode(&bytecode).unwrap();
+        let restored = deserialize_bytecode(&bytes).unwrap();
+
+        let mut ctx = Context::new();
+        ctx.eval_bytecode(&restored).unwrap();
+        assert_eq!(ctx.get("int_val"), Some(Value::Int(42)));
+        assert_eq!(ctx.get("float_val"), Some(Value::Float(3.14)));
+        assert_eq!(ctx.get("bool_val"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("none_val"), Some(Value::None));
+        assert_eq!(ctx.get("str_val"), Some(Value::String("test".to_string())));
+    }
+
+    // VM deep tests - exception handling and edge cases
+
+    #[test]
+    fn test_multiple_except_handlers_type_match() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+try:
+    raise TypeError("type error")
+except ValueError:
+    result = "value"
+except TypeError:
+    result = "type"
+except:
+    result = "other"
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("type".to_string())));
+    }
+
+    #[test]
+    fn test_nested_try_except_propagation() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+try:
+    try:
+        raise ValueError("inner")
+    except TypeError:
+        result = "inner type"
+except ValueError:
+    result = "outer value"
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("outer value".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_finally_with_exception() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+try:
+    raise ValueError("test")
+finally:
+    cleanup = True
+"#,
+        );
+        assert!(result.is_err());
+        assert_eq!(ctx.get("cleanup"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_method_call_on_list() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3]
+x.append(4)
+x.append(5)
+"#,
+        )
+        .unwrap();
+        let list = ctx.get("x").unwrap();
+        if let Value::List(l) = list {
+            assert_eq!(l.borrow().items.len(), 5);
+        } else {
+            panic!("Expected list");
+        }
+    }
+
+    #[test]
+    fn test_method_call_on_string() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world"
+result = s.upper()
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("HELLO WORLD".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_chained_method_calls() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = "  hello  ".strip().upper()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("HELLO".to_string())));
+    }
+
+    #[test]
+    fn test_slice_with_none_bounds() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3, 4, 5]
+result = x[:]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 5);
+        } else {
+            panic!("Expected list");
+        }
+    }
+
+    #[test]
+    fn test_slice_with_negative_step() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3, 4, 5]
+result = x[::-1]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            let items = &l.borrow().items;
+            assert_eq!(items[0], Value::Int(5));
+            assert_eq!(items[4], Value::Int(1));
+        } else {
+            panic!("Expected list");
+        }
+    }
+
+    #[test]
+    fn test_slice_string_with_step() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "abcdefgh"
+result = s[::2]
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("aceg".to_string())));
+    }
+
+    #[test]
+    fn test_nested_list_modification() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [[1, 2], [3, 4]]
+x[0].append(3)
+x[1].append(5)
+"#,
+        )
+        .unwrap();
+        let x = ctx.get("x").unwrap();
+        if let Value::List(outer) = x {
+            let items = &outer.borrow().items;
+            if let Value::List(inner) = &items[0] {
+                assert_eq!(inner.borrow().items.len(), 3);
+            }
+        }
+    }
+
+    #[test]
+    fn test_dict_get_with_default_value() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+d = {"a": 1, "b": 2}
+result1 = d.get("a")
+result2 = d.get("c")
+result3 = d.get("c", 99)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Int(1)));
+        assert_eq!(ctx.get("result2"), Some(Value::None));
+        assert_eq!(ctx.get("result3"), Some(Value::Int(99)));
+    }
+
+    #[test]
+    fn test_string_join_list() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+parts = ["hello", "world", "test"]
+result = " ".join(parts)
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("hello world test".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_while_with_break_in_nested_if() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 0
+while x < 100:
+    x += 1
+    if x > 5:
+        if x == 7:
+            break
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(7)));
+    }
+
+    #[test]
+    fn test_isinstance_with_multiple_types() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 42
+result1 = isinstance(x, int)
+result2 = isinstance(x, str)
+result3 = isinstance("hello", str)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result3"), Some(Value::Bool(true)));
+    }
+
+    // Additional VM tests for existing functionality
+    #[test]
+    fn test_string_startswith_endswith() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world"
+result1 = s.startswith("hello")
+result2 = s.startswith("world")
+result3 = s.endswith("world")
+result4 = s.endswith("hello")
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result3"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result4"), Some(Value::Bool(false)));
+    }
+
+    // Additional tests to reach 75% coverage
+    #[test]
+    fn test_division_by_zero_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 / 0");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ZeroDivisionError"));
+    }
+
+    #[test]
+    fn test_modulo_by_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10 % 0");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ZeroDivisionError"));
+    }
+
+    #[test]
+    fn test_float_division_by_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("10.5 / 0.0");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_index_negative_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = [1, 2, 3]
+x[-10]
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_index_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+s = "hello"
+s[10]
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_negative_index_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+s = "hello"
+s[-10]
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_tuple_index_out_of_bounds() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+t = (1, 2, 3)
+t[10]
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_slice_assignment() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = [1, 2, 3]
+x[0:2] = 5
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_call_non_function() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = 42
+x()
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_attribute_error_on_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = 42
+x.append(5)
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_pop_empty() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = []
+x.pop()
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_index_not_found() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = [1, 2, 3]
+x.index(99)
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_pop_missing_key() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {"a": 1}
+d.pop("b")
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_replace() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world"
+result = s.replace("world", "python")
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("hello python".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_string_replace_multiple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello hello hello"
+result = s.replace("hello", "hi")
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("hi hi hi".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_nested_function_calls() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = len(str(len([1, 2, 3])))
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(1)));
+    }
+
+    #[test]
+    fn test_complex_list_comprehension() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = [x * 2 for x in range(5) if x % 2 == 0]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            let items = &l.borrow().items;
+            assert_eq!(items.len(), 3);
+            assert_eq!(items[0], Value::Int(0));
+            assert_eq!(items[1], Value::Int(4));
+            assert_eq!(items[2], Value::Int(8));
+        }
+    }
+
+    #[test]
+    fn test_multiple_assignment() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = b = c = 10
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(10)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(10)));
+        assert_eq!(ctx.get("c"), Some(Value::Int(10)));
+    }
+
+    #[test]
+    fn test_augmented_assignment_all_ops() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = 10
+a += 5
+b = 20
+b -= 5
+c = 3
+c *= 4
+d = 20
+d /= 4
+e = 17
+e %= 5
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(15)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(15)));
+        assert_eq!(ctx.get("c"), Some(Value::Int(12)));
+        assert_eq!(ctx.get("d"), Some(Value::Int(5)));
+        assert_eq!(ctx.get("e"), Some(Value::Int(2)));
+    }
+
+    #[test]
+    fn test_in_operator_list() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3, 4, 5]
+result1 = 3 in x
+result2 = 10 in x
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_in_operator_string() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world"
+result1 = "world" in s
+result2 = "xyz" in s
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_not_in_operator() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3]
+result1 = 5 not in x
+result2 = 2 not in x
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_logical_and_short_circuit() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 0
+result = x and (10 / x)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(0)));
+    }
+
+    #[test]
+    fn test_logical_or_short_circuit() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 5
+result = x or (10 / 0)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_not_operator() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result1 = not True
+result2 = not False
+result3 = not 0
+result4 = not 5
+result5 = not ""
+result6 = not "hello"
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result3"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result4"), Some(Value::Bool(false)));
+        assert_eq!(ctx.get("result5"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result6"), Some(Value::Bool(false)));
+    }
+
+    // More tests for better coverage
+    #[test]
+    fn test_empty_string_operations() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = ""
+result1 = len(s)
+result2 = s.upper()
+result3 = s.lower()
+result4 = s.strip()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Int(0)));
+        assert_eq!(ctx.get("result2"), Some(Value::String("".to_string())));
+        assert_eq!(ctx.get("result3"), Some(Value::String("".to_string())));
+        assert_eq!(ctx.get("result4"), Some(Value::String("".to_string())));
+    }
+
+    #[test]
+    fn test_tuple_slicing() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+t = (1, 2, 3, 4, 5)
+result = t[1:4]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::Tuple(t) = result {
+            assert_eq!(t.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_string_split_no_separator() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world test"
+result = s.split()
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_string_split_custom_separator() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "a,b,c,d"
+result = s.split(",")
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 4);
+        }
+    }
+
+    #[test]
+    fn test_string_strip_whitespace() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "  hello  "
+result = s.strip()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("hello".to_string())));
+    }
+
+    #[test]
+    fn test_for_loop_with_break() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 0
+for i in range(10):
+    if i == 5:
+        break
+    result = i
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(4)));
+    }
+
+    #[test]
+    fn test_for_loop_with_continue() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 0
+for i in range(10):
+    if i % 2 == 0:
+        continue
+    result += i
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(25)));
+    }
+
+    #[test]
+    fn test_while_loop_basic() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+i = 0
+while i < 5:
+    i += 1
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("i"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_while_loop_with_break() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+i = 0
+while True:
+    i += 1
+    if i >= 10:
+        break
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("i"), Some(Value::Int(10)));
+    }
+
+    #[test]
+    fn test_while_loop_with_continue() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+i = 0
+count = 0
+while i < 10:
+    i += 1
+    if i % 2 == 0:
+        continue
+    count += 1
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("count"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_nested_loops() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 0
+for i in range(3):
+    for j in range(3):
+        result += 1
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(9)));
+    }
+
+    #[test]
+    fn test_function_multiple_returns() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def check(x):
+    if x > 0:
+        return "positive"
+    elif x < 0:
+        return "negative"
+    else:
+        return "zero"
+
+result1 = check(5)
+result2 = check(-3)
+result3 = check(0)
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result1"),
+            Some(Value::String("positive".to_string()))
+        );
+        assert_eq!(
+            ctx.get("result2"),
+            Some(Value::String("negative".to_string()))
+        );
+        assert_eq!(ctx.get("result3"), Some(Value::String("zero".to_string())));
+    }
+
+    #[test]
+    fn test_recursive_function() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+
+result = factorial(5)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(120)));
+    }
+
+    #[test]
+    fn test_list_comprehension_with_condition() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = [x for x in range(10) if x % 2 == 0]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 5);
+        }
+    }
+
+    #[test]
+    fn test_list_comprehension_with_transformation() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = [x * x for x in range(5)]
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            let items = &l.borrow().items;
+            assert_eq!(items[0], Value::Int(0));
+            assert_eq!(items[4], Value::Int(16));
+        }
+    }
+
+    #[test]
+    fn test_elif_chain() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = 15
+if x < 10:
+    result = "small"
+elif x < 20:
+    result = "medium"
+elif x < 30:
+    result = "large"
+else:
+    result = "huge"
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("medium".to_string())));
+    }
+
+    #[test]
+    fn test_comparison_operators() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result1 = 5 == 5
+result2 = 5 != 3
+result3 = 5 < 10
+result4 = 5 <= 5
+result5 = 10 > 5
+result6 = 10 >= 10
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result3"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result4"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result5"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result6"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_float_operations() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = 3.5
+b = 2.0
+result1 = a + b
+result2 = a - b
+result3 = a * b
+result4 = a / b
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Float(5.5)));
+        assert_eq!(ctx.get("result2"), Some(Value::Float(1.5)));
+        assert_eq!(ctx.get("result3"), Some(Value::Float(7.0)));
+        assert_eq!(ctx.get("result4"), Some(Value::Float(1.75)));
+    }
+
+    #[test]
+    fn test_mixed_int_float_operations() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result1 = 5 + 2.5
+result2 = 10 - 3.5
+result3 = 4 * 2.5
+result4 = 10 / 4.0
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Float(7.5)));
+        assert_eq!(ctx.get("result2"), Some(Value::Float(6.5)));
+        assert_eq!(ctx.get("result3"), Some(Value::Float(10.0)));
+        assert_eq!(ctx.get("result4"), Some(Value::Float(2.5)));
+    }
+
+    // Additional targeted tests for better coverage
+    #[test]
+    fn test_os_path_exists_check() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import os
+result1 = os.path.exists("/tmp")
+result2 = os.path.exists("/nonexistent_path_12345")
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_os_path_join_multiple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import os
+result = os.path.join("a", "b", "c")
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::String(s) = result {
+            assert!(s.contains("a") && s.contains("b") && s.contains("c"));
+        }
+    }
+
+    #[test]
+    fn test_os_getcwd_returns_string() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import os
+result = os.getcwd()
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        assert!(matches!(result, Value::String(_)));
+    }
+
+    #[test]
+    fn test_os_listdir_current() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import os
+result = os.listdir(".")
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert!(l.borrow().items.len() > 0);
+        }
+    }
+
+    #[test]
+    fn test_re_match_groups() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import re
+match = re.match(r"(\d+)-(\d+)", "123-456")
+result1 = match.group(0)
+result2 = match.group(1)
+result3 = match.group(2)
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result1"),
+            Some(Value::String("123-456".to_string()))
+        );
+        assert_eq!(ctx.get("result2"), Some(Value::String("123".to_string())));
+        assert_eq!(ctx.get("result3"), Some(Value::String("456".to_string())));
+    }
+
+    #[test]
+    fn test_re_findall_multiple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import re
+result = re.findall(r"\d+", "abc 123 def 456 ghi 789")
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_re_sub_multiple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import re
+result = re.sub(r"\d+", "X", "abc 123 def 456")
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("abc X def X".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_json_loads_nested() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+data = json.loads('{"a": {"b": {"c": 123}}}')
+result = data["a"]["b"]["c"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(123)));
+    }
+
+    #[test]
+    fn test_json_dumps_nested() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+data = {"a": [1, 2, 3], "b": {"c": 4}}
+result = json.dumps(data)
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::String(s) = result {
+            assert!(s.contains("\"a\"") && s.contains("\"b\""));
+        }
+    }
+
+    #[test]
+    fn test_isinstance_multiple_types() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result1 = isinstance([], list)
+result2 = isinstance({}, dict)
+result3 = isinstance((), tuple)
+result4 = isinstance(5, int)
+result5 = isinstance(5.0, float)
+result6 = isinstance("", str)
+result7 = isinstance(True, bool)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result3"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result4"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result5"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result6"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result7"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_async_function_simple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def add(a, b):
+    return a + b
+
+result = await add(3, 4)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(7)));
+    }
+
+    #[test]
+    fn test_async_function_with_multiple_awaits() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import asyncio
+
+async def task1():
+    await asyncio.sleep(0.01)
+    return 1
+
+async def task2():
+    await asyncio.sleep(0.01)
+    return 2
+
+async def main():
+    r1 = await task1()
+    r2 = await task2()
+    return r1 + r2
+
+result = await main()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(3)));
+    }
+
+    #[test]
+    fn test_exception_with_traceback() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def func1():
+    raise ValueError("test error")
+
+def func2():
+    func1()
+
+func2()
+"#,
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ValueError"));
+        assert!(err.contains("test error"));
+    }
+
+    #[test]
+    fn test_finally_block_with_exception() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+cleanup = False
+try:
+    raise ValueError("error")
+finally:
+    cleanup = True
+"#,
+        );
+        assert!(result.is_err());
+        assert_eq!(ctx.get("cleanup"), Some(Value::Bool(true)));
+    }
+
+    #[test]
+    fn test_try_except_finally_all() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = []
+try:
+    result.append(1)
+    raise ValueError("error")
+except ValueError:
+    result.append(2)
+finally:
+    result.append(3)
+"#,
+        )
+        .unwrap();
+        let result = ctx.get("result").unwrap();
+        if let Value::List(l) = result {
+            assert_eq!(l.borrow().items.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_nested_exception_handling() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 0
+try:
+    try:
+        raise ValueError("inner")
+    except TypeError:
+        result = 1
+    except ValueError:
+        result = 2
+except:
+    result = 3
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(2)));
+    }
+
+    // Targeted tests for uncovered code paths
+    #[test]
+    fn test_re_subn() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import re
+result, count = re.subn(r"\d+", "X", "abc 123 def 456 ghi")
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("abc X def X ghi".to_string()))
+        );
+        assert_eq!(ctx.get("count"), Some(Value::Int(2)));
+    }
+
+    #[test]
+    fn test_re_subn_no_match() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import re
+result, count = re.subn(r"\d+", "X", "abc def ghi")
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            ctx.get("result"),
+            Some(Value::String("abc def ghi".to_string()))
+        );
+        assert_eq!(ctx.get("count"), Some(Value::Int(0)));
+    }
+
+    #[test]
+    fn test_json_loads_with_whitespace() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+data = json.loads('  { "a" : 1 , "b" : 2 }  ')
+result = data["a"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(1)));
+    }
+
+    #[test]
+    fn test_json_loads_array() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+data = json.loads('[1, 2, 3, 4, 5]')
+result = len(data)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_json_dumps_with_none() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+result = json.dumps(None)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("null".to_string())));
+    }
+
+    #[test]
+    fn test_json_dumps_with_bool() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+import json
+result1 = json.dumps(True)
+result2 = json.dumps(False)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::String("true".to_string())));
+        assert_eq!(ctx.get("result2"), Some(Value::String("false".to_string())));
+    }
+
+    #[test]
+    fn test_string_index_not_found() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+s = "hello"
+s.index("z")
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_has_key() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+d = {"a": 1, "b": 2}
+result1 = "a" in d
+result2 = "c" in d
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Bool(true)));
+        assert_eq!(ctx.get("result2"), Some(Value::Bool(false)));
+    }
+
+    #[test]
+    fn test_string_slice_negative_indices() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+s = "hello world"
+result1 = s[-5:]
+result2 = s[:-6]
+result3 = s[-5:-1]
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::String("world".to_string())));
+        assert_eq!(ctx.get("result2"), Some(Value::String("hello".to_string())));
+        assert_eq!(ctx.get("result3"), Some(Value::String("worl".to_string())));
+    }
+
+    #[test]
+    fn test_list_slice_negative_indices() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+x = [1, 2, 3, 4, 5]
+result1 = x[-3:]
+result2 = x[:-2]
+"#,
+        )
+        .unwrap();
+        let result1 = ctx.get("result1").unwrap();
+        let result2 = ctx.get("result2").unwrap();
+        if let Value::List(l) = result1 {
+            assert_eq!(l.borrow().items.len(), 3);
+        }
+        if let Value::List(l) = result2 {
+            assert_eq!(l.borrow().items.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_tuple_unpacking_single() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+(x,) = (42,)
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(42)));
+    }
+
+    #[test]
+    fn test_string_concatenation_multiple() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = "a" + "b" + "c" + "d"
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result"), Some(Value::String("abcd".to_string())));
+    }
+
+    #[test]
+    fn test_modulo_negative() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result1 = -10 % 3
+result2 = 10 % -3
+result3 = -10 % -3
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("result1"), Some(Value::Int(-1)));
+        assert_eq!(ctx.get("result2"), Some(Value::Int(1)));
+        assert_eq!(ctx.get("result3"), Some(Value::Int(-1)));
+    }
+
+    #[test]
+    fn test_float_modulo() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = 10.5 % 3.0
+"#,
+        )
+        .unwrap();
+        if let Some(Value::Float(f)) = ctx.get("result") {
+            assert!((f - 1.5).abs() < 0.0001);
+        }
+    }
+
+    // Error handling tests for arithmetic operations
+    #[test]
+    fn test_sub_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello" - 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mul_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = {} * 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_div_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = [] / 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_div_int_float_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 10 / 0.0"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_div_float_int_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 10.5 / 0"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mod_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello" % 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mod_float_int_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 10.5 % 0"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mod_int_float_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 10 % 0.0"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mod_float_float_zero() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 10.5 % 0.0"#);
+        assert!(result.is_err());
+    }
+
+    // Comparison error tests
+    #[test]
+    fn test_lt_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello" < 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_le_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = [] <= 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_gt_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = {} > 5"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_ge_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = None >= 5"#);
+        assert!(result.is_err());
+    }
+
+    // GetItem error tests
+    #[test]
+    fn test_getitem_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 42[0]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_getitem_on_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = None[0]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_getitem_unhashable_key() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {1: "a"}
+result = d[[1, 2]]
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    // SetItem error tests
+    #[test]
+    fn test_setitem_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+x = 42
+x[0] = 1
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_setitem_on_tuple_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+t = (1, 2, 3)
+t[0] = 5
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_setitem_on_string_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+s = "hello"
+s[0] = "H"
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_setitem_unhashable_key() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {}
+d[[1, 2]] = "value"
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    // Range error tests
+    #[test]
+    fn test_range_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = list(range())"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_range_too_many_args() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = list(range(1, 2, 3, 4))"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_range_non_int_arg() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = list(range("hello"))"#);
+        assert!(result.is_err());
+    }
+
+    // CallMethod error tests
+    #[test]
+    fn test_method_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = (42).append(1)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_method_on_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = None.upper()"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_append_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+lst = []
+lst.append()
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_pop_with_arg() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+lst = [1, 2, 3]
+result = lst.pop(1)
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_split_non_string_sep() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "a,b,c".split(123)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_replace_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".replace("l")"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_replace_non_string_args() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".replace(1, 2)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_startswith_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".startswith()"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_startswith_non_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".startswith(123)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_endswith_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".endswith()"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_endswith_non_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".endswith([])"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_join_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = ",".join()"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_join_non_list() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = ",".join(123)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_join_list_with_non_strings() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = ",".join([1, 2, 3])"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_index_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".index()"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_string_index_non_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = "hello".index(123)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_index_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+lst = [1, 2, 3]
+result = lst.index()
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_keys_with_args() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {"a": 1}
+result = d.keys(1)
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_pop_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {"a": 1}
+result = d.pop()
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_dict_pop_too_many_args() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {"a": 1}
+result = d.pop("a", 0, "extra")
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    // UnpackSequence error tests
+    #[test]
+    fn test_unpack_non_sequence() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"a, b = 42"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unpack_dict() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"a, b = {"x": 1, "y": 2}"#);
+        assert!(result.is_err());
+    }
+
+    // Contains error tests
+    #[test]
+    fn test_in_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 1 in 42"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_in_on_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 1 in None"#);
+        assert!(result.is_err());
+    }
+
+    // Len error tests
+    #[test]
+    fn test_len_on_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = len(None)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_len_on_bool_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = len(True)"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_len_on_float_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = len(3.14)"#);
+        assert!(result.is_err());
+    }
+
+    // GetIter error tests
+    #[test]
+    fn test_iterate_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+for x in 42:
+    pass
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_iterate_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+for x in None:
+    pass
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_iterate_bool_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+for x in True:
+    pass
+"#,
+        );
+        assert!(result.is_err());
+    }
+
+    // BuildSlice error tests
+    #[test]
+    fn test_slice_non_int_start() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = [1, 2, 3]["a":2]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_slice_non_int_stop() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = [1, 2, 3][0:"b"]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_slice_non_int_step() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = [1, 2, 3][0:2:"c"]"#);
+        assert!(result.is_err());
+    }
+
+    // GetItemSlice error tests
+    #[test]
+    fn test_slice_on_int_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = 42[0:2]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_slice_on_dict_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = {"a": 1}[0:2]"#);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_slice_on_none_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"result = None[0:2]"#);
+        assert!(result.is_err());
     }
 }

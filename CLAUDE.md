@@ -6,8 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 QuickPython is a lightweight Python bytecode VM written in Rust. It compiles Python source to custom bytecode and executes it on a stack-based virtual machine. The project prioritizes being small, fast to start, and easy to extend over full CPython compatibility.
 
-**Current version:** 0.1.2  
-**Test coverage:** 254 tests passing
 
 ## Development Commands
 
@@ -21,8 +19,7 @@ cargo build --workspace        # Build all workspace members (includes quickpyth
 ### Testing
 ```bash
 cargo test                     # Run all tests
-cargo test --lib               # Run only library tests (254 tests)
-cargo test test_name           # Run specific test by name
+cargo test --lib               # Run only library tests 
 cargo test async               # Run all async-related tests
 cargo test --workspace         # Run tests for all workspace members
 ```
@@ -57,47 +54,6 @@ Python Source → rustpython_parser → AST → Compiler → ByteCode → VM →
 ```
 
 The project uses RustPython's parser for the frontend and implements a custom bytecode compiler and stack-based VM.
-
-### Key Components
-
-**src/compiler.rs** - AST → ByteCode compiler
-- Uses `rustpython_parser` to parse Python source into AST
-- Compiles AST to custom bytecode instructions
-- Handles function definitions, control flow, comprehensions, async/await
-- Maintains local variable tracking and loop stack for break/continue
-
-**src/vm.rs** - Stack-based virtual machine executor (2500+ lines)
-- Main execution loop with giant match on `Instruction` enum
-- Stack-based architecture: operands pushed/popped from `Vec<Value>`
-- Frame-based function calls with separate `locals` per frame
-- Exception handling with try/except/finally blocks
-- Async/await support integrated with Tokio runtime
-- **Critical**: Await instruction uses `Runtime::block_on` to maintain sync API while supporting async operations
-
-**src/value.rs** - Runtime value representation
-- `enum Value` represents all Python values (Int, Float, Bool, String, List, Dict, Tuple, etc.)
-- Reference-counted heap objects (List, Dict, etc.) using `Rc<RefCell<...>>`
-- Special types: Coroutine (async functions), AsyncSleep (for asyncio.sleep)
-- Type objects for isinstance() checks
-
-**src/bytecode.rs** - Bytecode instruction set
-- Simple fixed-size instruction enum (not yet optimized with variable-length encoding)
-- Instructions include: arithmetic ops, comparisons, control flow, function calls, await, etc.
-- `MakeFunction` includes `is_async: bool` flag for async functions
-
-**src/context.rs** - Public API facade
-- `Context` provides high-level `eval()` method for running Python code
-- Manages VM instance and global variables HashMap
-- Extension module registration via `register_extension_module()`
-
-**src/serializer.rs** - Bytecode serialization (.pyq files)
-- Serializes bytecode to binary format for faster loading
-- Not all instructions are serializable yet (returns errors for unsupported ones)
-
-**src/builtins/** - Built-in modules (json, os, re, asyncio)
-- Each module exports a `create_module()` function returning a `Module`
-- Functions are `NativeFunction` types (Rust function pointers)
-- `asyncio.rs`: asyncio.sleep() returns `Value::AsyncSleep` that VM's Await instruction recognizes
 
 ### Value System Design
 
@@ -163,16 +119,6 @@ Three types of modules:
    - Extension creates Module with functions/attributes
 
 3. **Python modules** - not yet implemented
-
-## Testing Strategy
-
-Tests are in `src/main.rs` under `#[cfg(test)] mod tests`.
-
-Each task (Tasks 001-039) has associated tests. When adding features:
-1. Add tests in the `tests` module
-2. Test both success cases and error cases
-3. For async features, include timing verification (use `std::time::Instant`)
-4. Update test count in README and CHANGELOG when adding tests
 
 ## Common Patterns
 
@@ -247,7 +193,7 @@ When implementing new tasks:
 - `spec/import-system.md` - Module import mechanism
 - `spec/exception-system.md` - Exception handling design
 
-**Note:** Spec files describe ideal architecture; actual implementation is simpler in v0.1.1.
+**Note:** Spec files describe ideal architecture; actual implementation is simpler.
 
 ## Programming Principles
 
@@ -281,4 +227,3 @@ When adding features, ask:
 2. Does this add a new abstraction layer, or simplify an existing one?
 3. Will this still make sense when reading the code in 6 months?
 4. Is there a simpler way that's "good enough"?
-

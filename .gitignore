@@ -26,3 +26,4 @@ Thumbs.db
 /simple_*.py
 /*.py
 !examples/*.py
+*.profraw

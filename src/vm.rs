@@ -913,7 +913,7 @@ impl VM {
                     if i > 0 {
                         print!(" ");
                     }
-                    Self::print_value_inline(value);
+                    Self::print_value_for_print(value);
                 }
                 println!();
 
@@ -2088,6 +2088,85 @@ impl VM {
             .ok_or_else(|| Value::error(ExceptionType::TypeError, "Expected integer"))
     }
 
+    /// Print value for print() statement (strings without quotes, like Python's str())
+    fn print_value_for_print(value: &Value) {
+        match value {
+            Value::Int(i) => print!("{}", i),
+            Value::Float(f) => print!("{}", f),
+            Value::Bool(b) => print!("{}", if *b { "True" } else { "False" }),
+            Value::String(s) => print!("{}", s), // No quotes for print()
+            Value::None => print!("None"),
+            Value::List(list) => {
+                print!("[");
+                let list_ref = list.borrow();
+                for (i, item) in list_ref.items.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    Self::print_value_inline(item); // Use repr-style for nested values
+                }
+                print!("]");
+            }
+            Value::Tuple(tuple) => {
+                print!("(");
+                for (i, item) in tuple.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    Self::print_value_inline(item); // Use repr-style for nested values
+                }
+                if tuple.len() == 1 {
+                    print!(",");
+                }
+                print!(")");
+            }
+            Value::Dict(dict) => {
+                print!("{{");
+                let dict_ref = dict.borrow();
+                for (i, (key, value)) in dict_ref.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    match key {
+                        DictKey::String(s) => print!("'{}': ", s),
+                        DictKey::Int(i) => print!("{}: ", i),
+                    }
+                    Self::print_value_inline(value); // Use repr-style for nested values
+                }
+                print!("}}");
+            }
+            Value::Iterator(_) => print!("<iterator>"),
+            Value::Function(f) => print!("<function {}>", f.name),
+            Value::Exception(exc) => {
+                print!("{:?}: {}", exc.exception_type, exc.message);
+            }
+            Value::Module(m) => print!("<module '{}'>", m.borrow().name),
+            Value::NativeFunction(_) => print!("<built-in function>"),
+            Value::BoundMethod(_, method_name) => print!("<bound method {}>", method_name),
+            Value::Regex(_) => print!("<regex pattern>"),
+            Value::Match(m) => print!("<re.Match object; span=({}, {})>", m.start, m.end),
+            Value::Slice { start, stop, step } => {
+                print!("slice({:?}, {:?}, {:?})", start, stop, step);
+            }
+            Value::Type(t) => {
+                let type_name = match t {
+                    crate::value::TypeObject::Int => "int",
+                    crate::value::TypeObject::Float => "float",
+                    crate::value::TypeObject::Bool => "bool",
+                    crate::value::TypeObject::Str => "str",
+                    crate::value::TypeObject::List => "list",
+                    crate::value::TypeObject::Dict => "dict",
+                    crate::value::TypeObject::Tuple => "tuple",
+                    crate::value::TypeObject::NoneType => "NoneType",
+                };
+                print!("<class '{}'>", type_name);
+            }
+            Value::Coroutine(func, _) => print!("<coroutine object {}>", func.name),
+            Value::AsyncSleep(seconds) => print!("<async sleep {}>", seconds),
+        }
+    }
+
+    /// Print value for debugging/repr (strings with quotes)
     fn print_value_inline(value: &Value) {
         match value {
             Value::Int(i) => print!("{}", i),
