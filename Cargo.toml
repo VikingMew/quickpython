@@ -7,7 +7,7 @@ members = [
 
 [package]
 name = "quickpython"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["VikingMew"]
 description = "A lightweight Python bytecode VM written in Rust"
