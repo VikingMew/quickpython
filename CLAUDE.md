@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 QuickPython is a lightweight Python bytecode VM written in Rust. It compiles Python source to custom bytecode and executes it on a stack-based virtual machine. The project prioritizes being small, fast to start, and easy to extend over full CPython compatibility.
 
-**Current version:** 0.1.1  
+**Current version:** 0.1.2  
 **Test coverage:** 254 tests passing
 
 ## Development Commands
