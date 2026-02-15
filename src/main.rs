@@ -688,8 +688,8 @@ def sum_range(n):
         let mut ctx = Context::new();
         let result = ctx.eval(
             r#"
-list = [1, 2, 3]
-x = list[10]
+my_list = [1, 2, 3]
+x = my_list[10]
         "#,
         );
         assert!(result.is_err());
@@ -703,8 +703,8 @@ x = list[10]
         let mut ctx = Context::new();
         let result = ctx.eval(
             r#"
-dict = {"a": 1}
-x = dict["b"]
+my_dict = {"a": 1}
+x = my_dict["b"]
         "#,
         );
         assert!(result.is_err());
