@@ -92,6 +92,9 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::Le => buffer.push(0x17),
         Instruction::Gt => buffer.push(0x18),
         Instruction::Ge => buffer.push(0x19),
+        Instruction::Contains | Instruction::NotContains => {
+            return Err("'in' operator instructions cannot be serialized yet".to_string());
+        }
         Instruction::GetGlobal(name) => {
             buffer.push(0x20);
             let bytes = name.as_bytes();
@@ -140,13 +143,16 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         }
         Instruction::Int => buffer.push(0x41),
         Instruction::Float => buffer.push(0x42),
+        Instruction::Str => buffer.push(0x44),
         Instruction::Len => buffer.push(0x43),
         Instruction::BuildList(_)
         | Instruction::BuildDict(_)
+        | Instruction::BuildTuple(_)
+        | Instruction::UnpackSequence(_)
         | Instruction::GetItem
         | Instruction::SetItem
         | Instruction::CallMethod(_, _) => {
-            return Err("List/Dict instructions cannot be serialized yet".to_string());
+            return Err("List/Dict/Tuple instructions cannot be serialized yet".to_string());
         }
         Instruction::Range => buffer.push(0x50),
         Instruction::GetIter => buffer.push(0x51),
@@ -166,6 +172,9 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
                 "Continue instructions cannot be serialized (should be compiled to Jump)"
                     .to_string(),
             );
+        }
+        Instruction::JumpIfFalseOrPop(_) | Instruction::JumpIfTrueOrPop(_) | Instruction::Not => {
+            return Err("Logical operator instructions cannot be serialized yet".to_string());
         }
         Instruction::MakeException(_) | Instruction::Raise => {
             return Err("Exception instructions cannot be serialized yet".to_string());

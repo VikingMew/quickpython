@@ -24,6 +24,8 @@ pub enum Instruction {
     Le,
     Gt,
     Ge,
+    Contains,    // Check if item in container (for 'in' operator)
+    NotContains, // Check if item not in container (for 'not in' operator)
 
     // 变量
     GetGlobal(String),
@@ -34,6 +36,11 @@ pub enum Instruction {
     // 控制流
     Jump(usize),
     JumpIfFalse(usize),
+    JumpIfFalseOrPop(usize), // If TOS is false, jump; else pop and continue (for 'and')
+    JumpIfTrueOrPop(usize),  // If TOS is true, jump; else pop and continue (for 'or')
+
+    // 逻辑运算
+    Not, // Logical not: !TOS
 
     // 函数
     MakeFunction {
@@ -48,15 +55,18 @@ pub enum Instruction {
     Print(usize), // print() 函数，参数是要打印的值的数量
     Int,          // int() 类型转换
     Float,        // float() 类型转换
+    Str,          // str() 类型转换
     Len,          // len() 函数
     Range,        // range() 函数，参数数量在栈上
 
     // 列表和字典
     BuildList(usize),          // 从栈顶取 n 个元素构建列表
     BuildDict(usize),          // 从栈顶取 n*2 个元素构建字典（键值对）
+    BuildTuple(usize),         // 从栈顶取 n 个元素构建元组
     GetItem,                   // 索引访问 list[i] 或 dict[key]
     SetItem,                   // 索引赋值 list[i] = x 或 dict[key] = x
     CallMethod(String, usize), // 方法调用 obj.method(args)
+    UnpackSequence(usize),     // 解包序列到 n 个值
 
     // 迭代器和 for 循环
     GetIter,        // 获取对象的迭代器

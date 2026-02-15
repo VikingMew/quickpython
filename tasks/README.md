@@ -111,14 +111,26 @@
 - 迭代器：range, list, dict.keys()，带修改检测
 - CLI：`cargo run -- run <file.py>`
 
+## Phase 4 (核心语法扩展) - 规划中
+
+- [ ] Task 027: 复合赋值运算符 (+=, -=, *=, /=, %=)
+- [ ] Task 028: 逻辑运算符 (and, or, not)
+- [ ] Task 029: in 运算符（成员测试）
+- [ ] Task 030: 字符串方法 (.split(), .strip(), .startswith(), .endswith())
+- [ ] Task 031: 字典 .get() 方法
+- [ ] Task 032: 多重赋值和元组解包 (a, b = 1, 2)
+- [ ] Task 033: f-string 格式化
+- [ ] Task 034: str() 内置函数
+- [ ] Task 035: 列表/字符串切片 ([start:end:step])
+- [ ] Task 036: isinstance() 内置函数
+- [ ] Task 037: 列表推导式
+
 ## 后续规划
 
-Phase 4 (高级特性)：
-- 更多运算符 (//, %, and, or, not, in, is)
+Phase 5 (高级特性)：
+- [ ] Task 038: async/await 异步支持
 - elif 多分支条件
-- 列表推导式
-- 类和对象
-- 模块和导入系统
-- 装饰器
+- 字典/集合推导式
 - 生成器和 yield
 - with 语句
+- 装饰器

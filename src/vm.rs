@@ -1,6 +1,6 @@
 use crate::builtins;
 use crate::bytecode::{ByteCode, Instruction};
-use crate::value::{DictKey, ExceptionType, Function, IteratorState, Module, Value};
+use crate::value::{DictKey, ExceptionType, Function, IteratorState, ListValue, Module, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -589,6 +589,91 @@ impl VM {
                 self.stack.push(Value::Bool(result));
                 *ip += 1;
             }
+            Instruction::Contains => {
+                // Check if item in container
+                let container = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let item = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match container {
+                    Value::List(list) => {
+                        // Check if item equals any element in list
+                        list.borrow().items.iter().any(|v| {
+                            // Simple equality check
+                            match (v, &item) {
+                                (Value::Int(a), Value::Int(b)) => a == b,
+                                (Value::Float(a), Value::Float(b)) => a == b,
+                                (Value::Bool(a), Value::Bool(b)) => a == b,
+                                (Value::String(a), Value::String(b)) => a == b,
+                                (Value::None, Value::None) => true,
+                                _ => false,
+                            }
+                        })
+                    }
+                    Value::Dict(dict) => {
+                        // Check if item is a key in dict
+                        let key = match &item {
+                            Value::String(s) => Some(DictKey::String(s.clone())),
+                            Value::Int(i) => Some(DictKey::Int(*i)),
+                            _ => None,
+                        };
+
+                        if let Some(k) = key {
+                            dict.borrow().contains_key(&k)
+                        } else {
+                            false
+                        }
+                    }
+                    Value::String(s) => {
+                        // Check if substring in string
+                        if let Value::String(needle) = item {
+                            s.contains(&needle)
+                        } else {
+                            return Err(Value::error(
+                                ExceptionType::TypeError,
+                                "'in <string>' requires string as left operand",
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "argument of type is not iterable",
+                        ));
+                    }
+                };
+
+                self.stack.push(Value::Bool(result));
+                *ip += 1;
+            }
+            Instruction::NotContains => {
+                // Check if item not in container (just negate Contains)
+                let container = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let item = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                // Push back and execute Contains
+                self.stack.push(item);
+                self.stack.push(container);
+                self.execute_instruction(&Instruction::Contains, ip, globals)?;
+
+                // Negate the result
+                let value = self.stack.pop().unwrap();
+                if let Value::Bool(b) = value {
+                    self.stack.push(Value::Bool(!b));
+                }
+                // ip already incremented by Contains
+            }
             Instruction::GetGlobal(name) => {
                 let value = globals
                     .get(name)
@@ -659,6 +744,48 @@ impl VM {
                     *ip += 1;
                 }
             }
+            Instruction::JumpIfFalseOrPop(offset) => {
+                // 用于 'and' 运算符的短路求值
+                let value = self
+                    .stack
+                    .last()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                if value.is_truthy() {
+                    // 值为真，弹出并继续
+                    self.stack.pop();
+                    *ip += 1;
+                } else {
+                    // 值为假，保留值并跳转
+                    *ip = *offset;
+                }
+            }
+            Instruction::JumpIfTrueOrPop(offset) => {
+                // 用于 'or' 运算符的短路求值
+                let value = self
+                    .stack
+                    .last()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                if value.is_truthy() {
+                    // 值为真，保留值并跳转
+                    *ip = *offset;
+                } else {
+                    // 值为假，弹出并继续
+                    self.stack.pop();
+                    *ip += 1;
+                }
+            }
+            Instruction::Not => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = !value.is_truthy();
+                self.stack.push(Value::Bool(result));
+                *ip += 1;
+            }
             Instruction::MakeFunction {
                 name,
                 params,
@@ -699,6 +826,12 @@ impl VM {
                     Value::NativeFunction(native_fn) => {
                         // Call native function directly
                         let result = native_fn(args)?;
+                        self.stack.push(result);
+                        *ip += 1;
+                    }
+                    Value::BoundMethod(receiver, method_name) => {
+                        // Call bound method
+                        let result = self.call_string_method(&receiver, &method_name, args)?;
                         self.stack.push(result);
                         *ip += 1;
                     }
@@ -835,6 +968,69 @@ impl VM {
                 self.stack.push(Value::Float(result));
                 *ip += 1;
             }
+            Instruction::Str => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match value {
+                    Value::String(s) => s,
+                    Value::Int(i) => i.to_string(),
+                    Value::Float(f) => {
+                        // Format float nicely
+                        if f.fract() == 0.0 && f.is_finite() {
+                            format!("{:.1}", f) // "5.0" not "5"
+                        } else {
+                            f.to_string()
+                        }
+                    }
+                    Value::Bool(b) => if b { "True" } else { "False" }.to_string(),
+                    Value::None => "None".to_string(),
+                    Value::List(list) => {
+                        // "[1, 2, 3]"
+                        let items: Vec<String> = list
+                            .borrow()
+                            .items
+                            .iter()
+                            .map(|v| Self::value_repr(v))
+                            .collect();
+                        format!("[{}]", items.join(", "))
+                    }
+                    Value::Tuple(tuple) => {
+                        // "(1, 2, 3)"
+                        let items: Vec<String> =
+                            tuple.iter().map(|v| Self::value_repr(v)).collect();
+                        if tuple.len() == 1 {
+                            format!("({},)", items[0])
+                        } else {
+                            format!("({})", items.join(", "))
+                        }
+                    }
+                    Value::Dict(dict) => {
+                        // "{'a': 1, 'b': 2}"
+                        let items: Vec<String> = dict
+                            .borrow()
+                            .iter()
+                            .map(|(k, v)| {
+                                let key_str = match k {
+                                    DictKey::String(s) => format!("'{}'", s),
+                                    DictKey::Int(i) => i.to_string(),
+                                };
+                                format!("{}: {}", key_str, Self::value_repr(v))
+                            })
+                            .collect();
+                        format!("{{{}}}", items.join(", "))
+                    }
+                    Value::Function(f) => {
+                        format!("<function {}>", f.name)
+                    }
+                    _ => format!("<{} object>", Self::type_name(&value)),
+                };
+
+                self.stack.push(Value::String(result));
+                *ip += 1;
+            }
             Instruction::Len => {
                 let value = self
                     .stack
@@ -865,6 +1061,17 @@ impl VM {
                 self.stack.push(Value::List(Rc::new(RefCell::new(
                     crate::value::ListValue::with_items(elements),
                 ))));
+                *ip += 1;
+            }
+            Instruction::BuildTuple(count) => {
+                let mut elements = Vec::new();
+                for _ in 0..*count {
+                    elements.push(self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?);
+                }
+                elements.reverse();
+                self.stack.push(Value::Tuple(Rc::new(elements)));
                 *ip += 1;
             }
             Instruction::BuildDict(count) => {
@@ -996,6 +1203,41 @@ impl VM {
                 }
                 *ip += 1;
             }
+            Instruction::UnpackSequence(count) => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let items = match &value {
+                    Value::Tuple(tuple) => tuple.as_ref().clone(),
+                    Value::List(list) => list.borrow().items.clone(),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "cannot unpack non-sequence",
+                        ));
+                    }
+                };
+
+                if items.len() != *count {
+                    return Err(Value::error(
+                        ExceptionType::ValueError,
+                        format!(
+                            "too many values to unpack (expected {}, got {})",
+                            count,
+                            items.len()
+                        ),
+                    ));
+                }
+
+                // 将元素压入栈（顺序）
+                for item in items {
+                    self.stack.push(item);
+                }
+
+                *ip += 1;
+            }
             Instruction::CallMethod(method_name, arg_count) => {
                 // 获取参数
                 let mut args = Vec::new();
@@ -1068,6 +1310,41 @@ impl VM {
                             self.stack.push(Value::List(Rc::new(RefCell::new(
                                 crate::value::ListValue::with_items(keys),
                             ))));
+                        }
+                        "get" => {
+                            if args.is_empty() {
+                                return Err(Value::error(
+                                    ExceptionType::TypeError,
+                                    "get() takes at least 1 argument (0 given)",
+                                ));
+                            }
+
+                            // Convert key to DictKey
+                            let key = match &args[0] {
+                                Value::String(s) => Some(DictKey::String(s.clone())),
+                                Value::Int(i) => Some(DictKey::Int(*i)),
+                                _ => None,
+                            };
+
+                            if key.is_none() {
+                                return Err(Value::error(
+                                    ExceptionType::TypeError,
+                                    "unhashable type",
+                                ));
+                            }
+
+                            // Get default value (None if not provided)
+                            let default = if args.len() > 1 {
+                                args[1].clone()
+                            } else {
+                                Value::None
+                            };
+
+                            // Look up key
+                            let result =
+                                dict.borrow().get(&key.unwrap()).cloned().unwrap_or(default);
+
+                            self.stack.push(result);
                         }
                         _ => {
                             return Err(Value::error(
@@ -1159,6 +1436,11 @@ impl VM {
                                 ));
                             }
                         }
+                    }
+                    Value::String(s) => {
+                        let result =
+                            self.call_string_method(&Value::String(s), method_name, args)?;
+                        self.stack.push(result);
                     }
                     _ => {
                         return Err(Value::error(
@@ -1537,10 +1819,26 @@ impl VM {
                         })?;
                         self.stack.push(attr);
                     }
+                    Value::String(_) => {
+                        // Create a bound method for string methods
+                        match attr_name.as_str() {
+                            "split" | "strip" | "startswith" | "endswith" | "lower" | "upper"
+                            | "replace" | "join" => {
+                                self.stack
+                                    .push(Value::BoundMethod(Box::new(value), attr_name.clone()));
+                            }
+                            _ => {
+                                return Err(Value::error(
+                                    ExceptionType::AttributeError,
+                                    format!("'str' object has no attribute '{}'", attr_name),
+                                ));
+                            }
+                        }
+                    }
                     _ => {
                         return Err(Value::error(
                             ExceptionType::TypeError,
-                            "getattr on non-module",
+                            "getattr on non-module/non-string",
                         ));
                     }
                 }
@@ -1579,6 +1877,19 @@ impl VM {
                 }
                 print!("]");
             }
+            Value::Tuple(tuple) => {
+                print!("(");
+                for (i, item) in tuple.iter().enumerate() {
+                    if i > 0 {
+                        print!(", ");
+                    }
+                    Self::print_value_inline(item);
+                }
+                if tuple.len() == 1 {
+                    print!(","); // Single element tuple needs trailing comma
+                }
+                print!(")");
+            }
             Value::Dict(dict) => {
                 print!("{{");
                 let dict_ref = dict.borrow();
@@ -1601,8 +1912,211 @@ impl VM {
             }
             Value::Module(m) => print!("<module '{}'>", m.borrow().name),
             Value::NativeFunction(_) => print!("<built-in function>"),
+            Value::BoundMethod(_, method_name) => print!("<bound method {}>", method_name),
             Value::Regex(_) => print!("<regex pattern>"),
             Value::Match(m) => print!("<re.Match object; span=({}, {})>", m.start, m.end),
+        }
+    }
+
+    fn call_string_method(
+        &self,
+        receiver: &Value,
+        method_name: &str,
+        args: Vec<Value>,
+    ) -> Result<Value, Value> {
+        match receiver {
+            Value::String(s) => match method_name {
+                "split" => self.string_split(s, &args),
+                "strip" => self.string_strip(s, &args),
+                "startswith" => self.string_startswith(s, &args),
+                "endswith" => self.string_endswith(s, &args),
+                "lower" => self.string_lower(s, &args),
+                "upper" => self.string_upper(s, &args),
+                "replace" => self.string_replace(s, &args),
+                "join" => self.string_join(s, &args),
+                _ => Err(Value::error(
+                    ExceptionType::AttributeError,
+                    format!("'str' object has no attribute '{}'", method_name),
+                )),
+            },
+            _ => Err(Value::error(
+                ExceptionType::TypeError,
+                "bound method called on non-string",
+            )),
+        }
+    }
+
+    fn string_split(&self, s: &str, args: &[Value]) -> Result<Value, Value> {
+        let sep = if args.is_empty() {
+            None
+        } else {
+            match &args[0] {
+                Value::String(sep) => Some(sep.as_str()),
+                Value::None => None,
+                _ => {
+                    return Err(Value::error(
+                        ExceptionType::TypeError,
+                        "sep must be string or None",
+                    ));
+                }
+            }
+        };
+
+        let parts: Vec<Value> = if let Some(sep) = sep {
+            s.split(sep).map(|p| Value::String(p.to_string())).collect()
+        } else {
+            s.split_whitespace()
+                .map(|p| Value::String(p.to_string()))
+                .collect()
+        };
+
+        Ok(Value::List(Rc::new(RefCell::new(ListValue {
+            items: parts,
+            version: 0,
+        }))))
+    }
+
+    fn string_strip(&self, s: &str, _args: &[Value]) -> Result<Value, Value> {
+        Ok(Value::String(s.trim().to_string()))
+    }
+
+    fn string_startswith(&self, s: &str, args: &[Value]) -> Result<Value, Value> {
+        if args.is_empty() {
+            return Err(Value::error(
+                ExceptionType::TypeError,
+                "startswith() takes at least 1 argument",
+            ));
+        }
+
+        match &args[0] {
+            Value::String(prefix) => Ok(Value::Bool(s.starts_with(prefix))),
+            _ => Err(Value::error(
+                ExceptionType::TypeError,
+                "startswith() argument must be str",
+            )),
+        }
+    }
+
+    fn string_endswith(&self, s: &str, args: &[Value]) -> Result<Value, Value> {
+        if args.is_empty() {
+            return Err(Value::error(
+                ExceptionType::TypeError,
+                "endswith() takes at least 1 argument",
+            ));
+        }
+
+        match &args[0] {
+            Value::String(suffix) => Ok(Value::Bool(s.ends_with(suffix))),
+            _ => Err(Value::error(
+                ExceptionType::TypeError,
+                "endswith() argument must be str",
+            )),
+        }
+    }
+
+    fn string_lower(&self, s: &str, _args: &[Value]) -> Result<Value, Value> {
+        Ok(Value::String(s.to_lowercase()))
+    }
+
+    fn string_upper(&self, s: &str, _args: &[Value]) -> Result<Value, Value> {
+        Ok(Value::String(s.to_uppercase()))
+    }
+
+    fn string_replace(&self, s: &str, args: &[Value]) -> Result<Value, Value> {
+        if args.len() < 2 {
+            return Err(Value::error(
+                ExceptionType::TypeError,
+                "replace() takes at least 2 arguments",
+            ));
+        }
+
+        let old = match &args[0] {
+            Value::String(s) => s,
+            _ => {
+                return Err(Value::error(
+                    ExceptionType::TypeError,
+                    "replace() argument 1 must be str",
+                ));
+            }
+        };
+
+        let new = match &args[1] {
+            Value::String(s) => s,
+            _ => {
+                return Err(Value::error(
+                    ExceptionType::TypeError,
+                    "replace() argument 2 must be str",
+                ));
+            }
+        };
+
+        Ok(Value::String(s.replace(old, new)))
+    }
+
+    fn string_join(&self, sep: &str, args: &[Value]) -> Result<Value, Value> {
+        if args.is_empty() {
+            return Err(Value::error(
+                ExceptionType::TypeError,
+                "join() takes exactly 1 argument",
+            ));
+        }
+
+        match &args[0] {
+            Value::List(list) => {
+                let strings: Result<Vec<String>, Value> = list
+                    .borrow()
+                    .items
+                    .iter()
+                    .map(|v| match v {
+                        Value::String(s) => Ok(s.clone()),
+                        _ => Err(Value::error(
+                            ExceptionType::TypeError,
+                            "join() requires all items to be strings",
+                        )),
+                    })
+                    .collect();
+
+                let strings = strings?;
+                Ok(Value::String(strings.join(sep)))
+            }
+            _ => Err(Value::error(
+                ExceptionType::TypeError,
+                "join() argument must be a list",
+            )),
+        }
+    }
+
+    // Helper function to get type name of a value
+    fn type_name(value: &Value) -> &str {
+        match value {
+            Value::Int(_) => "int",
+            Value::Float(_) => "float",
+            Value::Bool(_) => "bool",
+            Value::None => "NoneType",
+            Value::String(_) => "str",
+            Value::List(_) => "list",
+            Value::Dict(_) => "dict",
+            Value::Tuple(_) => "tuple",
+            Value::Iterator(_) => "iterator",
+            Value::Function(_) => "function",
+            Value::Exception(_) => "exception",
+            Value::Module(_) => "module",
+            Value::NativeFunction(_) => "builtin_function_or_method",
+            Value::BoundMethod(_, _) => "method",
+            Value::Regex(_) => "Pattern",
+            Value::Match(_) => "Match",
+        }
+    }
+
+    // Helper function for repr-style formatting (with quotes for strings)
+    fn value_repr(value: &Value) -> String {
+        match value {
+            Value::String(s) => format!("'{}'", s),
+            Value::Int(i) => i.to_string(),
+            Value::Float(f) => f.to_string(),
+            Value::Bool(b) => if *b { "True" } else { "False" }.to_string(),
+            Value::None => "None".to_string(),
+            _ => format!("{:?}", value),
         }
     }
 }

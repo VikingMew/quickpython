@@ -193,11 +193,13 @@ pub enum Value {
     String(String),
     List(Rc<RefCell<ListValue>>),
     Dict(Rc<RefCell<HashMap<DictKey, Value>>>),
+    Tuple(Rc<Vec<Value>>), // Immutable sequence
     Iterator(Rc<RefCell<IteratorState>>),
     Function(Function),
     Exception(ExceptionValue),
     Module(Rc<RefCell<Module>>),
     NativeFunction(NativeFunction),
+    BoundMethod(Box<Value>, String), // (receiver, method_name)
     Regex(Rc<Regex>),
     Match(Rc<MatchObject>),
 }
@@ -212,11 +214,13 @@ impl std::fmt::Debug for Value {
             Value::String(s) => write!(f, "String({:?})", s),
             Value::List(l) => write!(f, "List({:?})", l),
             Value::Dict(d) => write!(f, "Dict({:?})", d),
+            Value::Tuple(t) => write!(f, "Tuple({:?})", t),
             Value::Iterator(i) => write!(f, "Iterator({:?})", i),
             Value::Function(func) => write!(f, "Function({:?})", func),
             Value::Exception(e) => write!(f, "Exception({:?})", e),
             Value::Module(m) => write!(f, "Module({:?})", m),
             Value::NativeFunction(_) => write!(f, "NativeFunction(<native>)"),
+            Value::BoundMethod(_, method_name) => write!(f, "BoundMethod(<{}>)", method_name),
             Value::Regex(_) => write!(f, "Regex(<pattern>)"),
             Value::Match(m) => write!(f, "Match({:?})", m),
         }
@@ -304,11 +308,13 @@ impl Value {
             Value::String(s) => !s.is_empty(),
             Value::List(list) => !list.borrow().items.is_empty(),
             Value::Dict(dict) => !dict.borrow().is_empty(),
+            Value::Tuple(tuple) => !tuple.is_empty(),
             Value::Iterator(_) => true,
             Value::Function(_) => true,
             Value::Exception(_) => true,
             Value::Module(_) => true,
             Value::NativeFunction(_) => true,
+            Value::BoundMethod(_, _) => true,
             Value::Regex(_) => true,
             Value::Match(_) => true,
         }
@@ -325,6 +331,7 @@ impl PartialEq for Value {
             (Value::String(a), Value::String(b)) => a == b,
             (Value::List(a), Value::List(b)) => Rc::ptr_eq(a, b),
             (Value::Dict(a), Value::Dict(b)) => Rc::ptr_eq(a, b),
+            (Value::Tuple(a), Value::Tuple(b)) => Rc::ptr_eq(a, b),
             (Value::Iterator(a), Value::Iterator(b)) => Rc::ptr_eq(a, b),
             (Value::Function(a), Value::Function(b)) => a == b,
             (Value::Exception(a), Value::Exception(b)) => {
@@ -332,6 +339,7 @@ impl PartialEq for Value {
             }
             (Value::Module(a), Value::Module(b)) => Rc::ptr_eq(a, b),
             (Value::NativeFunction(a), Value::NativeFunction(b)) => std::ptr::eq(a, b),
+            (Value::BoundMethod(a1, m1), Value::BoundMethod(a2, m2)) => a1 == a2 && m1 == m2,
             (Value::Regex(a), Value::Regex(b)) => Rc::ptr_eq(a, b),
             (Value::Match(a), Value::Match(b)) => Rc::ptr_eq(a, b),
             _ => false,

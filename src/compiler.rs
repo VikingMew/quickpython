@@ -61,13 +61,37 @@ impl Compiler {
     fn compile_stmt(&mut self, stmt: &ast::Stmt, bytecode: &mut ByteCode) -> Result<(), String> {
         match stmt {
             ast::Stmt::Assign(assign) => {
-                // 编译右侧表达式
-                self.compile_expr(&assign.value, bytecode)?;
-
                 // 处理每个目标
                 for target in &assign.targets {
                     match target {
+                        ast::Expr::Tuple(tuple) => {
+                            // 多重赋值: a, b, c = expr
+                            // 编译右侧表达式
+                            self.compile_expr(&assign.value, bytecode)?;
+
+                            // 解包到 n 个值
+                            let n = tuple.elts.len();
+                            bytecode.push(Instruction::UnpackSequence(n));
+
+                            // 为每个目标赋值（从栈顶弹出，所以需要反向）
+                            for target_expr in tuple.elts.iter().rev() {
+                                match target_expr {
+                                    ast::Expr::Name(name) => {
+                                        let var_name = name.id.to_string();
+                                        if let Some(&index) = self.local_vars.get(&var_name) {
+                                            bytecode.push(Instruction::SetLocal(index));
+                                        } else {
+                                            bytecode.push(Instruction::SetGlobal(var_name));
+                                        }
+                                        bytecode.push(Instruction::Pop);
+                                    }
+                                    _ => return Err("Unsupported unpacking target".to_string()),
+                                }
+                            }
+                        }
                         ast::Expr::Name(name) => {
+                            // 单个赋值
+                            self.compile_expr(&assign.value, bytecode)?;
                             let var_name = name.id.to_string();
                             // 检查是否是局部变量
                             if let Some(&index) = self.local_vars.get(&var_name) {
@@ -75,21 +99,22 @@ impl Compiler {
                             } else {
                                 bytecode.push(Instruction::SetGlobal(var_name));
                             }
+                            bytecode.push(Instruction::Pop);
                         }
                         ast::Expr::Subscript(subscript) => {
                             // 下标赋值: obj[index] = value
+                            self.compile_expr(&assign.value, bytecode)?;
                             // 编译对象
                             self.compile_expr(&subscript.value, bytecode)?;
                             // 编译索引
                             self.compile_expr(&subscript.slice, bytecode)?;
                             // 值已经在栈顶
                             bytecode.push(Instruction::SetItem);
+                            bytecode.push(Instruction::Pop);
                         }
                         _ => return Err("Unsupported assignment target".to_string()),
                     }
                 }
-                // 赋值语句不应该留值在栈上
-                bytecode.push(Instruction::Pop);
                 Ok(())
             }
             ast::Stmt::FunctionDef(func_def) => {
@@ -423,6 +448,56 @@ impl Compiler {
 
                 Ok(())
             }
+            ast::Stmt::AugAssign(aug) => {
+                // Desugar: x += 5  →  x = x + 5
+                // 1. Load current value of target
+                // 2. Compile the value expression
+                // 3. Apply the operator
+                // 4. Store back to target
+
+                match &*aug.target {
+                    ast::Expr::Name(name) => {
+                        let var_name = name.id.to_string();
+
+                        // Load current value
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::GetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::GetGlobal(var_name.clone()));
+                        }
+
+                        // Compile the value expression
+                        self.compile_expr(&aug.value, bytecode)?;
+
+                        // Apply the operator
+                        match aug.op {
+                            ast::Operator::Add => bytecode.push(Instruction::Add),
+                            ast::Operator::Sub => bytecode.push(Instruction::Sub),
+                            ast::Operator::Mult => bytecode.push(Instruction::Mul),
+                            ast::Operator::Div => bytecode.push(Instruction::Div),
+                            ast::Operator::Mod => bytecode.push(Instruction::Mod),
+                            _ => {
+                                return Err(format!(
+                                    "Unsupported augmented operator: {:?}",
+                                    aug.op
+                                ));
+                            }
+                        }
+
+                        // Store back to target
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::SetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::SetGlobal(var_name));
+                        }
+
+                        // Pop the result (augmented assignment doesn't produce a value)
+                        bytecode.push(Instruction::Pop);
+                        Ok(())
+                    }
+                    _ => Err("Augmented assignment only supports simple variables".to_string()),
+                }
+            }
             _ => Err(format!("Unsupported statement: {:?}", stmt)),
         }
     }
@@ -492,6 +567,8 @@ impl Compiler {
                     ast::CmpOp::LtE => bytecode.push(Instruction::Le),
                     ast::CmpOp::Gt => bytecode.push(Instruction::Gt),
                     ast::CmpOp::GtE => bytecode.push(Instruction::Ge),
+                    ast::CmpOp::In => bytecode.push(Instruction::Contains),
+                    ast::CmpOp::NotIn => bytecode.push(Instruction::NotContains),
                     _ => return Err(format!("Unsupported comparison: {:?}", compare.ops[0])),
                 }
                 Ok(())
@@ -523,6 +600,14 @@ impl Compiler {
                             }
                             self.compile_expr(&call.args[0], bytecode)?;
                             bytecode.push(Instruction::Float);
+                            return Ok(());
+                        }
+                        "str" => {
+                            if call.args.len() != 1 {
+                                return Err("str() takes exactly one argument".to_string());
+                            }
+                            self.compile_expr(&call.args[0], bytecode)?;
+                            bytecode.push(Instruction::Str);
                             return Ok(());
                         }
                         "len" => {
@@ -583,6 +668,14 @@ impl Compiler {
                 bytecode.push(Instruction::BuildList(list.elts.len()));
                 Ok(())
             }
+            ast::Expr::Tuple(tuple) => {
+                // 编译元组元素
+                for elt in &tuple.elts {
+                    self.compile_expr(elt, bytecode)?;
+                }
+                bytecode.push(Instruction::BuildTuple(tuple.elts.len()));
+                Ok(())
+            }
             ast::Expr::Dict(dict) => {
                 // 编译字典键值对
                 for i in 0..dict.keys.len() {
@@ -624,8 +717,103 @@ impl Compiler {
                         // 一元正号：直接编译操作数（无操作）
                         self.compile_expr(&unary.operand, bytecode)?;
                     }
+                    ast::UnaryOp::Not => {
+                        // 逻辑非：编译操作数，然后取反
+                        self.compile_expr(&unary.operand, bytecode)?;
+                        bytecode.push(Instruction::Not);
+                    }
                     _ => return Err(format!("Unsupported unary operator: {:?}", unary.op)),
                 }
+                Ok(())
+            }
+            ast::Expr::BoolOp(boolop) => {
+                // 逻辑运算符：and, or
+                match boolop.op {
+                    ast::BoolOp::And => {
+                        // a and b and c  →  短路求值
+                        // 编译第一个操作数
+                        self.compile_expr(&boolop.values[0], bytecode)?;
+
+                        // 对每个后续操作数
+                        for value in &boolop.values[1..] {
+                            let jump_offset = bytecode.len();
+                            bytecode.push(Instruction::JumpIfFalseOrPop(0)); // 占位符
+
+                            self.compile_expr(value, bytecode)?;
+
+                            // 回填跳转偏移
+                            let end_offset = bytecode.len();
+                            bytecode[jump_offset] = Instruction::JumpIfFalseOrPop(end_offset);
+                        }
+                    }
+                    ast::BoolOp::Or => {
+                        // a or b or c  →  短路求值
+                        // 编译第一个操作数
+                        self.compile_expr(&boolop.values[0], bytecode)?;
+
+                        // 对每个后续操作数
+                        for value in &boolop.values[1..] {
+                            let jump_offset = bytecode.len();
+                            bytecode.push(Instruction::JumpIfTrueOrPop(0)); // 占位符
+
+                            self.compile_expr(value, bytecode)?;
+
+                            // 回填跳转偏移
+                            let end_offset = bytecode.len();
+                            bytecode[jump_offset] = Instruction::JumpIfTrueOrPop(end_offset);
+                        }
+                    }
+                }
+                Ok(())
+            }
+            ast::Expr::JoinedStr(joined) => {
+                // f-string: f"Hello {name}"
+                // Desugar to: "Hello " + str(name)
+
+                if joined.values.is_empty() {
+                    // Empty f-string
+                    bytecode.push(Instruction::PushString(String::new()));
+                    return Ok(());
+                }
+
+                // Compile first part
+                match &joined.values[0] {
+                    ast::Expr::Constant(c) => {
+                        if let ast::Constant::Str(s) = &c.value {
+                            bytecode.push(Instruction::PushString(s.to_string()));
+                        } else {
+                            bytecode.push(Instruction::PushString(String::new()));
+                        }
+                    }
+                    ast::Expr::FormattedValue(fv) => {
+                        // Expression to be formatted
+                        self.compile_expr(&fv.value, bytecode)?;
+                        bytecode.push(Instruction::Str);
+                    }
+                    _ => return Err("Unsupported f-string component".to_string()),
+                }
+
+                // Compile remaining parts and concatenate
+                for value in &joined.values[1..] {
+                    match value {
+                        ast::Expr::Constant(c) => {
+                            if let ast::Constant::Str(s) = &c.value {
+                                if !s.is_empty() {
+                                    bytecode.push(Instruction::PushString(s.to_string()));
+                                    bytecode.push(Instruction::Add);
+                                }
+                            }
+                        }
+                        ast::Expr::FormattedValue(fv) => {
+                            // Expression to be formatted
+                            self.compile_expr(&fv.value, bytecode)?;
+                            bytecode.push(Instruction::Str);
+                            bytecode.push(Instruction::Add);
+                        }
+                        _ => return Err("Unsupported f-string component".to_string()),
+                    }
+                }
+
                 Ok(())
             }
             _ => Err(format!("Unsupported expression: {:?}", expr)),

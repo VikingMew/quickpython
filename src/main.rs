@@ -1835,4 +1835,800 @@ x
             .unwrap();
         assert_eq!(result, Value::String("caught ValueError".to_string()));
     }
+
+    // Task 027: Augmented Assignment Operators
+    #[test]
+    fn test_augmented_add() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 10\nx += 5\nx").unwrap();
+        assert_eq!(result, Value::Int(15));
+    }
+
+    #[test]
+    fn test_augmented_sub() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 10\nx -= 3\nx").unwrap();
+        assert_eq!(result, Value::Int(7));
+    }
+
+    #[test]
+    fn test_augmented_mul() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 5\nx *= 3\nx").unwrap();
+        assert_eq!(result, Value::Int(15));
+    }
+
+    #[test]
+    fn test_augmented_div() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 20\nx /= 4\nx").unwrap();
+        assert_eq!(result, Value::Int(5));
+    }
+
+    #[test]
+    fn test_augmented_mod() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 17\nx %= 5\nx").unwrap();
+        assert_eq!(result, Value::Int(2));
+    }
+
+    #[test]
+    fn test_augmented_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("x = 10.0\nx += 2.5\nx").unwrap();
+        assert_eq!(result, Value::Float(12.5));
+    }
+
+    #[test]
+    fn test_augmented_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("s = \"Hello\"\ns += \" World\"\ns").unwrap();
+        assert_eq!(result, Value::String("Hello World".to_string()));
+    }
+
+    #[test]
+    fn test_augmented_in_loop() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+total = 0
+for i in range(5):
+    total += i
+total
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(10));
+    }
+
+    // Task 028: Logical Operators
+    #[test]
+    fn test_logical_and_both_true() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("True and True").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_logical_and_first_false() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("False and True").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_logical_and_second_false() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("True and False").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_logical_or_both_false() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("False or False").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_logical_or_first_true() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("True or False").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_logical_or_second_true() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("False or True").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_logical_not_true() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("not True").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_logical_not_false() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("not False").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_logical_and_returns_value() {
+        let mut ctx = Context::new();
+        // Python's 'and' returns the last truthy value or first falsy value
+        let result = ctx.eval("1 and 2").unwrap();
+        assert_eq!(result, Value::Int(2));
+
+        let result = ctx.eval("0 and 5").unwrap();
+        assert_eq!(result, Value::Int(0));
+    }
+
+    #[test]
+    fn test_logical_or_returns_value() {
+        let mut ctx = Context::new();
+        // Python's 'or' returns the first truthy value or last falsy value
+        let result = ctx.eval("1 or 2").unwrap();
+        assert_eq!(result, Value::Int(1));
+
+        let result = ctx.eval("0 or 5").unwrap();
+        assert_eq!(result, Value::Int(5));
+    }
+
+    #[test]
+    fn test_logical_truthiness() {
+        let mut ctx = Context::new();
+        // Test truthiness of different types
+        assert_eq!(ctx.eval("not 0").unwrap(), Value::Bool(true));
+        assert_eq!(ctx.eval("not 1").unwrap(), Value::Bool(false));
+        assert_eq!(ctx.eval("not \"\"").unwrap(), Value::Bool(true));
+        assert_eq!(ctx.eval("not \"hello\"").unwrap(), Value::Bool(false));
+        assert_eq!(ctx.eval("not []").unwrap(), Value::Bool(true));
+        assert_eq!(ctx.eval("not [1]").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_logical_in_condition() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+x = 5
+if x > 0 and x < 10:
+    result = "in range"
+else:
+    result = "out of range"
+result
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("in range".to_string()));
+    }
+
+    #[test]
+    fn test_logical_chaining() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("True and True and True").unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = ctx.eval("False or False or True").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    // Task 029: in Operator
+    #[test]
+    fn test_in_list_found() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("2 in [1, 2, 3]").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_in_list_not_found() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("4 in [1, 2, 3]").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_not_in_list() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("4 not in [1, 2, 3]").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_in_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("\"world\" in \"hello world\"").unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = ctx.eval("\"xyz\" in \"hello world\"").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_in_dict() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1, "b": 2}
+result = "a" in d
+result
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1, "b": 2}
+result = "c" in d
+result
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_in_empty_containers() {
+        let mut ctx = Context::new();
+        assert_eq!(ctx.eval("1 in []").unwrap(), Value::Bool(false));
+        assert_eq!(ctx.eval("\"x\" in {}").unwrap(), Value::Bool(false));
+        assert_eq!(ctx.eval("\"x\" in \"\"").unwrap(), Value::Bool(false));
+    }
+
+    #[test]
+    fn test_in_condition() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+numbers = [1, 2, 3, 4, 5]
+if 3 in numbers:
+    result = "found"
+else:
+    result = "not found"
+result
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("found".to_string()));
+    }
+
+    #[test]
+    fn test_in_loop() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+count = 0
+for i in range(10):
+    if i in [2, 4, 6, 8]:
+        count += 1
+count
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(4));
+    }
+
+    // Task 030: String Methods
+    #[test]
+    fn test_string_split_whitespace() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+s = "hello world python"
+words = s.split()
+len(words)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn test_string_split_separator() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+s = "a,b,c"
+parts = s.split(",")
+len(parts)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(3));
+    }
+
+    #[test]
+    fn test_string_strip() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""  hello  ".strip()"#).unwrap();
+        assert_eq!(result, Value::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_string_startswith() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello world".startswith("hello")"#).unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = ctx.eval(r#""hello world".startswith("world")"#).unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_string_endswith() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello world".endswith("world")"#).unwrap();
+        assert_eq!(result, Value::Bool(true));
+
+        let result = ctx.eval(r#""hello world".endswith("hello")"#).unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_string_lower() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""Hello World".lower()"#).unwrap();
+        assert_eq!(result, Value::String("hello world".to_string()));
+    }
+
+    #[test]
+    fn test_string_upper() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""Hello World".upper()"#).unwrap();
+        assert_eq!(result, Value::String("HELLO WORLD".to_string()));
+    }
+
+    #[test]
+    fn test_string_replace() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(r#""hello world".replace("world", "python")"#)
+            .unwrap();
+        assert_eq!(result, Value::String("hello python".to_string()));
+    }
+
+    #[test]
+    fn test_string_join() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+words = ["hello", "world"]
+" ".join(words)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("hello world".to_string()));
+
+        let result = ctx
+            .eval(
+                r#"
+words = ["hello", "world"]
+",".join(words)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("hello,world".to_string()));
+    }
+
+    #[test]
+    fn test_string_method_chaining() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""  HELLO WORLD  ".strip().lower()"#).unwrap();
+        assert_eq!(result, Value::String("hello world".to_string()));
+    }
+
+    #[test]
+    fn test_string_split_empty() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+parts = "".split()
+len(parts)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(0));
+    }
+
+    // Task 031: Dictionary .get() Method
+    #[test]
+    fn test_dict_get_existing_key() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1, "b": 2}
+d.get("a")
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(1));
+    }
+
+    #[test]
+    fn test_dict_get_missing_key_no_default() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1}
+d.get("b")
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::None);
+    }
+
+    #[test]
+    fn test_dict_get_missing_key_with_default() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1}
+d.get("b", 0)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(0));
+
+        let result = ctx
+            .eval(
+                r#"
+d = {"a": 1}
+d.get("c", "default")
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("default".to_string()));
+    }
+
+    #[test]
+    fn test_dict_get_doesnt_modify() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+d = {"a": 1}
+result = d.get("b", 0)
+"#,
+        )
+        .unwrap();
+
+        let result = ctx.eval(r#""b" in d"#).unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_dict_get_different_key_types() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval(
+                r#"
+d = {1: "one", "two": 2}
+d.get(1)
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("one".to_string()));
+
+        let result = ctx
+            .eval(
+                r#"
+d = {1: "one", "two": 2}
+d.get("two")
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::Int(2));
+
+        let result = ctx
+            .eval(
+                r#"
+d = {1: "one", "two": 2}
+d.get(3, "missing")
+"#,
+            )
+            .unwrap();
+        assert_eq!(result, Value::String("missing".to_string()));
+    }
+
+    #[test]
+    fn test_dict_get_real_usage() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+config = {"host": "localhost", "port": 8080}
+host = config.get("host", "0.0.0.0")
+timeout = config.get("timeout", 30)
+"#,
+        )
+        .unwrap();
+
+        let host = ctx.get("host").unwrap();
+        assert_eq!(host, Value::String("localhost".to_string()));
+
+        let timeout = ctx.get("timeout").unwrap();
+        assert_eq!(timeout, Value::Int(30));
+    }
+
+    #[test]
+    fn test_dict_get_no_args_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+d = {"a": 1}
+d.get()
+"#,
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("TypeError"));
+    }
+
+    // Task 032: Multiple Assignment and Tuple Unpacking
+    #[test]
+    fn test_tuple_unpacking_basic() {
+        let mut ctx = Context::new();
+        ctx.eval("a, b = 1, 2").unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(1)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(2)));
+    }
+
+    #[test]
+    fn test_tuple_unpacking_from_list() {
+        let mut ctx = Context::new();
+        ctx.eval("x, y = [10, 20]").unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(10)));
+        assert_eq!(ctx.get("y"), Some(Value::Int(20)));
+    }
+
+    #[test]
+    fn test_tuple_unpacking_from_tuple() {
+        let mut ctx = Context::new();
+        ctx.eval("p, q = (100, 200)").unwrap();
+        assert_eq!(ctx.get("p"), Some(Value::Int(100)));
+        assert_eq!(ctx.get("q"), Some(Value::Int(200)));
+    }
+
+    #[test]
+    fn test_tuple_swap_variables() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+a = 5
+b = 10
+a, b = b, a
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(10)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(5)));
+    }
+
+    #[test]
+    fn test_tuple_multiple_values() {
+        let mut ctx = Context::new();
+        ctx.eval("a, b, c = 1, 2, 3").unwrap();
+        assert_eq!(ctx.get("a"), Some(Value::Int(1)));
+        assert_eq!(ctx.get("b"), Some(Value::Int(2)));
+        assert_eq!(ctx.get("c"), Some(Value::Int(3)));
+    }
+
+    #[test]
+    fn test_tuple_function_return() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def get_coords():
+    return 3, 4
+
+x, y = get_coords()
+"#,
+        )
+        .unwrap();
+        assert_eq!(ctx.get("x"), Some(Value::Int(3)));
+        assert_eq!(ctx.get("y"), Some(Value::Int(4)));
+    }
+
+    #[test]
+    fn test_tuple_unpacking_too_many_values() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("a, b = [1, 2, 3]");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ValueError") || err.contains("too many values"));
+    }
+
+    #[test]
+    fn test_tuple_unpacking_too_few_values() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("a, b, c = [1, 2]");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ValueError") || err.contains("expected 3"));
+    }
+
+    #[test]
+    fn test_tuple_literal() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("t = (1, 2, 3)").unwrap();
+        assert_eq!(result, Value::None);
+        // Tuple is stored in variable t
+    }
+
+    #[test]
+    fn test_tuple_in_expression() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("(1, 2)").unwrap();
+        // Should return a tuple
+        match result {
+            Value::Tuple(t) => {
+                assert_eq!(t.len(), 2);
+                assert_eq!(t[0], Value::Int(1));
+                assert_eq!(t[1], Value::Int(2));
+            }
+            _ => panic!("Expected tuple"),
+        }
+    }
+
+    // Task 034: str() Builtin Function
+    #[test]
+    fn test_str_int() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str(123)").unwrap();
+        assert_eq!(result, Value::String("123".to_string()));
+    }
+
+    #[test]
+    fn test_str_float() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str(3.14)").unwrap();
+        assert_eq!(result, Value::String("3.14".to_string()));
+    }
+
+    #[test]
+    fn test_str_bool() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str(True)").unwrap();
+        assert_eq!(result, Value::String("True".to_string()));
+
+        let result = ctx.eval("str(False)").unwrap();
+        assert_eq!(result, Value::String("False".to_string()));
+    }
+
+    #[test]
+    fn test_str_none() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str(None)").unwrap();
+        assert_eq!(result, Value::String("None".to_string()));
+    }
+
+    #[test]
+    fn test_str_string() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"str("hello")"#).unwrap();
+        assert_eq!(result, Value::String("hello".to_string()));
+    }
+
+    #[test]
+    fn test_str_list() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str([1, 2, 3])").unwrap();
+        assert_eq!(result, Value::String("[1, 2, 3]".to_string()));
+    }
+
+    #[test]
+    fn test_str_tuple() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("str((1, 2))").unwrap();
+        assert_eq!(result, Value::String("(1, 2)".to_string()));
+    }
+
+    #[test]
+    fn test_str_dict() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"d = {"a": 1}"#).unwrap();
+        let result = ctx.eval("str(d)").unwrap();
+        // Dict order might vary, just check it contains the key-value
+        let s = result.as_string().unwrap();
+        assert!(s.contains("'a'"));
+        assert!(s.contains("1"));
+    }
+
+    #[test]
+    fn test_str_concatenation() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""Number: " + str(42)"#).unwrap();
+        assert_eq!(result, Value::String("Number: 42".to_string()));
+    }
+
+    // Task 033: F-String Formatting
+    #[test]
+    fn test_fstring_simple_variable() {
+        let mut ctx = Context::new();
+        ctx.eval(r#"name = "Alice""#).unwrap();
+        let result = ctx.eval(r#"f"Hello {name}""#).unwrap();
+        assert_eq!(result, Value::String("Hello Alice".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_multiple_variables() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 10").unwrap();
+        ctx.eval("y = 20").unwrap();
+        let result = ctx.eval(r#"f"{x} + {y} = {x + y}""#).unwrap();
+        assert_eq!(result, Value::String("10 + 20 = 30".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_expressions() {
+        let mut ctx = Context::new();
+        ctx.eval("n = 5").unwrap();
+        let result = ctx.eval(r#"f"Square of {n} is {n * n}""#).unwrap();
+        assert_eq!(result, Value::String("Square of 5 is 25".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_different_types() {
+        let mut ctx = Context::new();
+        ctx.eval("age = 30").unwrap();
+        ctx.eval("height = 5.9").unwrap();
+        let result = ctx.eval(r#"f"Age: {age}, Height: {height}""#).unwrap();
+        assert_eq!(result, Value::String("Age: 30, Height: 5.9".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_no_interpolation() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#"f"Hello World""#).unwrap();
+        assert_eq!(result, Value::String("Hello World".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_only_expression() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 42").unwrap();
+        let result = ctx.eval(r#"f"{x}""#).unwrap();
+        assert_eq!(result, Value::String("42".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_function_call() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def get_name():
+    return "Bob"
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval(r#"f"Hello {get_name()}""#).unwrap();
+        assert_eq!(result, Value::String("Hello Bob".to_string()));
+    }
+
+    #[test]
+    fn test_fstring_nested_expression() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [1, 2, 3]").unwrap();
+        let result = ctx.eval(r#"f"Length: {len(items)}""#).unwrap();
+        assert_eq!(result, Value::String("Length: 3".to_string()));
+    }
 }
