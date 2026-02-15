@@ -205,6 +205,7 @@ pub enum Value {
     },
     Iterator(Rc<RefCell<IteratorState>>),
     Function(Function),
+    Coroutine(Function, Vec<Value>), // (async function, captured args)
     Exception(ExceptionValue),
     Module(Rc<RefCell<Module>>),
     NativeFunction(NativeFunction),
@@ -242,6 +243,7 @@ impl std::fmt::Debug for Value {
             }
             Value::Iterator(i) => write!(f, "Iterator({:?})", i),
             Value::Function(func) => write!(f, "Function({:?})", func),
+            Value::Coroutine(func, _) => write!(f, "Coroutine({:?})", func.name),
             Value::Exception(e) => write!(f, "Exception({:?})", e),
             Value::Module(m) => write!(f, "Module({:?})", m),
             Value::NativeFunction(_) => write!(f, "NativeFunction(<native>)"),
@@ -258,6 +260,7 @@ pub struct Function {
     pub name: String,
     pub params: Vec<String>,
     pub code: ByteCode,
+    pub is_async: bool,
 }
 
 impl Value {
@@ -338,6 +341,7 @@ impl Value {
             Value::Slice { .. } => true,
             Value::Iterator(_) => true,
             Value::Function(_) => true,
+            Value::Coroutine(_, _) => true,
             Value::Exception(_) => true,
             Value::Module(_) => true,
             Value::NativeFunction(_) => true,
@@ -378,6 +382,7 @@ impl PartialEq for Value {
             ) => s1 == s2 && st1 == st2 && step1 == step2,
             (Value::Iterator(a), Value::Iterator(b)) => Rc::ptr_eq(a, b),
             (Value::Function(a), Value::Function(b)) => a == b,
+            (Value::Coroutine(f1, _), Value::Coroutine(f2, _)) => f1 == f2,
             (Value::Exception(a), Value::Exception(b)) => {
                 a.exception_type == b.exception_type && a.message == b.message
             }

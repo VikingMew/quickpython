@@ -198,6 +198,9 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::PushType(_) | Instruction::IsInstance => {
             return Err("Type and isinstance instructions cannot be serialized yet".to_string());
         }
+        Instruction::Await => {
+            return Err("Await instruction cannot be serialized yet".to_string());
+        }
     }
     Ok(())
 }

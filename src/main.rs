@@ -2955,4 +2955,144 @@ for c in "abc":
         let expected = ctx.eval("['a', 'b', 'c']").unwrap();
         assert_eq!(result, expected);
     }
+
+    // Task 038: Async/Await Support
+    #[test]
+    fn test_async_function_basic() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def greet(name):
+    return "Hello, " + name
+
+result = await greet("World")
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::String("Hello, World".to_string()));
+    }
+
+    #[test]
+    fn test_async_function_with_computation() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def compute(x, y):
+    return x * y + 10
+
+result = await compute(5, 3)
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::Int(25));
+    }
+
+    #[test]
+    fn test_async_function_returns_coroutine() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def get_value():
+    return 42
+
+coro = get_value()
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("coro").unwrap();
+        // Should be a coroutine object, not the result
+        match result {
+            Value::Coroutine(_, _) => {} // Expected
+            _ => panic!("Expected coroutine, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_await_coroutine() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def get_value():
+    return 42
+
+coro = get_value()
+result = await coro
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::Int(42));
+    }
+
+    #[test]
+    fn test_async_function_with_multiple_statements() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def process(x):
+    y = x * 2
+    z = y + 5
+    return z
+
+result = await process(10)
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::Int(25));
+    }
+
+    #[test]
+    fn test_await_non_coroutine_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("await 42");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("TypeError"));
+        assert!(err.contains("cannot be awaited"));
+    }
+
+    #[test]
+    fn test_async_function_with_conditionals() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def check(x):
+    if x > 10:
+        return "big"
+    else:
+        return "small"
+
+result1 = await check(15)
+result2 = await check(5)
+"#,
+        )
+        .unwrap();
+        let result1 = ctx.eval("result1").unwrap();
+        let result2 = ctx.eval("result2").unwrap();
+        assert_eq!(result1, Value::String("big".to_string()));
+        assert_eq!(result2, Value::String("small".to_string()));
+    }
+
+    #[test]
+    fn test_async_function_nested_calls() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+async def inner(x):
+    return x * 2
+
+async def outer(x):
+    y = await inner(x)
+    return y + 1
+
+result = await outer(5)
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::Int(11));
+    }
 }

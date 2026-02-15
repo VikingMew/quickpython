@@ -60,6 +60,60 @@ impl Compiler {
         }
     }
 
+    fn compile_function_def(
+        &mut self,
+        func_def: &ast::StmtFunctionDef,
+        bytecode: &mut ByteCode,
+        is_async: bool,
+    ) -> Result<(), String> {
+        let func_name = func_def.name.to_string();
+        let params: Vec<String> = func_def
+            .args
+            .args
+            .iter()
+            .map(|arg| arg.def.arg.to_string())
+            .collect();
+
+        // 创建新的编译器上下文用于函数体
+        let mut func_compiler = Compiler {
+            local_vars: HashMap::new(),
+            local_count: 0,
+            loop_stack: Vec::new(),
+            temp_counter: 0,
+        };
+
+        // 将参数注册为局部变量
+        for (i, param) in params.iter().enumerate() {
+            func_compiler.local_vars.insert(param.clone(), i);
+            func_compiler.local_count = i + 1;
+        }
+
+        // 编译函数体
+        let mut func_bytecode = Vec::new();
+        for stmt in &func_def.body {
+            func_compiler.compile_stmt(stmt, &mut func_bytecode)?;
+        }
+
+        // 如果最后没有 return，添加 return None
+        if !matches!(func_bytecode.last(), Some(Instruction::Return)) {
+            func_bytecode.push(Instruction::PushNone);
+            func_bytecode.push(Instruction::Return);
+        }
+
+        let code_len = func_bytecode.len();
+        bytecode.push(Instruction::MakeFunction {
+            name: func_name,
+            params,
+            code_len,
+            is_async,
+        });
+        bytecode.extend(func_bytecode);
+
+        // 函数定义不产生值，添加 None 到栈
+        bytecode.push(Instruction::PushNone);
+        Ok(())
+    }
+
     fn compile_stmt(&mut self, stmt: &ast::Stmt, bytecode: &mut ByteCode) -> Result<(), String> {
         match stmt {
             ast::Stmt::Assign(assign) => {
@@ -120,8 +174,12 @@ impl Compiler {
                 Ok(())
             }
             ast::Stmt::FunctionDef(func_def) => {
-                let func_name = func_def.name.to_string();
-                let params: Vec<String> = func_def
+                self.compile_function_def(func_def, bytecode, false)
+            }
+            ast::Stmt::AsyncFunctionDef(async_func_def) => {
+                // AsyncFunctionDef has the same structure as FunctionDef
+                let func_name = async_func_def.name.to_string();
+                let params: Vec<String> = async_func_def
                     .args
                     .args
                     .iter()
@@ -144,7 +202,7 @@ impl Compiler {
 
                 // 编译函数体
                 let mut func_bytecode = Vec::new();
-                for stmt in &func_def.body {
+                for stmt in &async_func_def.body {
                     func_compiler.compile_stmt(stmt, &mut func_bytecode)?;
                 }
 
@@ -159,11 +217,9 @@ impl Compiler {
                     name: func_name,
                     params,
                     code_len,
+                    is_async: true,
                 });
                 bytecode.extend(func_bytecode);
-
-                // 函数定义不产生值，添加 None 到栈
-                bytecode.push(Instruction::PushNone);
                 Ok(())
             }
             ast::Stmt::Return(ret) => {
@@ -971,6 +1027,13 @@ impl Compiler {
                     }
                 }
 
+                Ok(())
+            }
+            ast::Expr::Await(await_expr) => {
+                // 编译被 await 的表达式
+                self.compile_expr(&await_expr.value, bytecode)?;
+                // 添加 Await 指令
+                bytecode.push(Instruction::Await);
                 Ok(())
             }
             _ => Err(format!("Unsupported expression: {:?}", expr)),

@@ -48,6 +48,7 @@ pub enum Instruction {
         name: String,
         params: Vec<String>,
         code_len: usize,
+        is_async: bool,
     },
     Call(usize), // 参数数量
     Return,
@@ -93,6 +94,9 @@ pub enum Instruction {
     // 模块导入
     Import(String),  // 导入模块，参数是模块名
     GetAttr(String), // 获取对象属性，参数是属性名
+
+    // 异步支持
+    Await, // 等待协程完成
 }
 
 pub type ByteCode = Vec<Instruction>;

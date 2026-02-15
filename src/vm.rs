@@ -794,6 +794,7 @@ impl VM {
                 name,
                 params,
                 code_len,
+                is_async,
             } => {
                 let current_frame = self
                     .frames
@@ -806,6 +807,7 @@ impl VM {
                     name: name.clone(),
                     params: params.clone(),
                     code: func_code,
+                    is_async: *is_async,
                 };
                 globals.insert(name.clone(), Value::Function(func));
                 *ip += 1 + code_len;
@@ -855,22 +857,30 @@ impl VM {
                             ));
                         }
 
-                        // Update calling frame's IP before creating new frame
-                        if let Some(calling_frame) = self.frames.last_mut() {
-                            calling_frame.ip = *ip + 1;
+                        // 如果是异步函数，返回协程对象而不是执行
+                        if func.is_async {
+                            let coroutine = Value::Coroutine(func, args);
+                            self.stack.push(coroutine);
+                            *ip += 1;
+                        } else {
+                            // 同步函数：立即执行
+                            // Update calling frame's IP before creating new frame
+                            if let Some(calling_frame) = self.frames.last_mut() {
+                                calling_frame.ip = *ip + 1;
+                            }
+
+                            // Create new frame
+                            let new_frame = Frame {
+                                locals: args,
+                                ip: 0,
+                                code: func.code.clone(),
+                                stack_base: self.stack.len(),
+                            };
+                            self.frames.push(new_frame);
+
+                            // Signal that we shouldn't update IP again in main loop
+                            *ip = usize::MAX;
                         }
-
-                        // Create new frame
-                        let new_frame = Frame {
-                            locals: args,
-                            ip: 0,
-                            code: func.code.clone(),
-                            stack_base: self.stack.len(),
-                        };
-                        self.frames.push(new_frame);
-
-                        // Signal that we shouldn't update IP again in main loop
-                        *ip = usize::MAX;
                     }
                     _ => {
                         return Err(Value::error(
@@ -1971,6 +1981,42 @@ impl VM {
                 self.stack.push(Value::Module(module));
                 *ip += 1;
             }
+            Instruction::Await => {
+                let coroutine = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                match coroutine {
+                    Value::Coroutine(func, args) => {
+                        // Execute the coroutine synchronously by creating a new frame
+                        // In a real async implementation, this would use Tokio's runtime
+
+                        // Update calling frame's IP before creating new frame
+                        if let Some(calling_frame) = self.frames.last_mut() {
+                            calling_frame.ip = *ip + 1;
+                        }
+
+                        // Create new frame for the coroutine
+                        let new_frame = Frame {
+                            locals: args,
+                            ip: 0,
+                            code: func.code.clone(),
+                            stack_base: self.stack.len(),
+                        };
+                        self.frames.push(new_frame);
+
+                        // Signal that we shouldn't update IP again in main loop
+                        *ip = usize::MAX;
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "object cannot be awaited",
+                        ));
+                    }
+                }
+            }
             Instruction::GetAttr(attr_name) => {
                 let value = self
                     .stack
@@ -2099,6 +2145,7 @@ impl VM {
                 };
                 print!("<class '{}'>", type_name);
             }
+            Value::Coroutine(func, _) => print!("<coroutine object {}>", func.name),
         }
     }
 
@@ -2291,6 +2338,7 @@ impl VM {
             Value::Match(_) => "Match",
             Value::Slice { .. } => "slice",
             Value::Type(_) => "type",
+            Value::Coroutine(_, _) => "coroutine",
         }
     }
 
