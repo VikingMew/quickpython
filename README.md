@@ -7,6 +7,7 @@
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/VikingMew/quickpython/actions/workflows/ci.yml/badge.svg)](https://github.com/VikingMew/quickpython/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
+[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)](https://github.com/VikingMew/quickpython/releases/tag/v0.1.1)
 
 > **Alpha** — This project is under active development. APIs may change, features may be incomplete, and bugs are expected. Contributions and feedback are welcome.
 
@@ -16,11 +17,24 @@
 
 QuickPython compiles Python source code to custom bytecode and executes it on a stack-based virtual machine. It focuses on being small, fast to start, and easy to extend — not on full CPython compatibility.
 
+## ✨ What's New in v0.1.1
+
+- **Async/await support** with Tokio integration — `async def`, `await`, `asyncio.sleep()`
+- **List comprehensions** — `[x*2 for x in items if x > 5]`
+- **F-string formatting** — `f"Hello {name}, result is {x + y}"`
+- **Enhanced operators** — augmented assignment (`+=`, `-=`), logical operators (`and`, `or`, `not`), membership (`in`)
+- **String methods** — `split()`, `strip()`, `startswith()`, `endswith()`, `lower()`, `upper()`, `replace()`, `join()`
+- **Advanced data structures** — tuple unpacking, slicing, `isinstance()`, type objects
+- **254 passing tests** (up from 128)
+
+See [CHANGELOG.md](CHANGELOG.md) for details.
+
 ## Features
 
 - **Bytecode compiler & VM** — compiles Python to custom bytecode, executes on a stack-based VM
 - **Core Python subset** — variables, functions, control flow, exceptions, lists, dicts, strings, floats
-- **Built-in modules** — `json`, `os`, `re`
+- **Async/await** — full async/await syntax with Tokio runtime integration
+- **Built-in modules** — `json`, `os`, `re`, `asyncio`
 - **Extension system** — register Rust-native modules as Python imports
 - **Bytecode serialization** — compile to `.pyq` files for faster loading
 - **Iterator safety** — detects list modification during iteration
@@ -41,24 +55,29 @@ The binary is at `target/release/quickpython`.
 
 ```python
 import json
+import asyncio
 
-def fibonacci(n):
+async def fetch_fibonacci(n):
+    """Simulate async computation with delay"""
+    await asyncio.sleep(0.1)
     if n <= 1:
         return n
-    return fibonacci(n - 1) + fibonacci(n - 2)
+    return await fetch_fibonacci(n - 1) + await fetch_fibonacci(n - 2)
 
-results = []
-for i in range(10):
-    results.append(fibonacci(i))
+async def main():
+    results = []
+    for i in range(8):
+        value = await fetch_fibonacci(i)
+        results.append(value)
+    
+    print(f"Fibonacci sequence: {json.dumps(results)}")
 
-print("Fibonacci sequence:")
-print(json.dumps(results))
+await main()
 ```
 
 ```bash
-$ quickpython run fib.py
-Fibonacci sequence:
-[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+$ quickpython run async_fib.py
+Fibonacci sequence: [0, 1, 1, 2, 3, 5, 8, 13]
 ```
 
 ## Usage
@@ -74,14 +93,19 @@ quickpython compile script.py -o out.pyq
 
 | Category | Features |
 |---|---|
-| **Types** | `int`, `float`, `bool`, `None`, `str`, `list`, `dict` |
-| **Operators** | `+` `-` `*` `/`, `==` `!=` `<` `<=` `>` `>=` |
+| **Types** | `int`, `float`, `bool`, `None`, `str`, `list`, `dict`, `tuple` |
+| **Operators** | `+` `-` `*` `/` `%`, `==` `!=` `<` `<=` `>` `>=`, `and` `or` `not`, `in`, `+=` `-=` `*=` `/=` `%=` |
 | **Control flow** | `if`/`elif`/`else`, `while`, `for`/`in`, `break`, `continue`, `pass` |
-| **Functions** | `def`, `return`, recursion, local scopes |
+| **Functions** | `def`, `async def`, `return`, `await`, recursion, local scopes |
+| **Comprehensions** | `[expr for x in iterable if condition]` |
+| **String formatting** | f-strings: `f"Hello {name}"` |
+| **Slicing** | `list[start:stop:step]`, `str[1:5]`, `tuple[-2:]` |
+| **Unpacking** | `a, b, c = [1, 2, 3]`, `x, y = y, x` |
 | **Exceptions** | `raise`, `try`/`except`/`finally`, 10 exception types |
-| **Built-ins** | `print()`, `len()`, `int()`, `float()`, `range()` |
-| **Collections** | list indexing/`append`/`pop`, dict indexing/`keys()` |
-| **Modules** | `import json`, `import os`, `import re` |
+| **Built-ins** | `print()`, `len()`, `int()`, `float()`, `str()`, `range()`, `isinstance()` |
+| **Collections** | list: indexing/`append`/`pop`, dict: indexing/`keys()`/`get()`, string methods |
+| **Modules** | `import json`, `import os`, `import re`, `import asyncio` |
+| **Type system** | Type objects (`int`, `str`, `list`, etc.), `isinstance()` checks |
 
 ## Embed in Rust
 
@@ -94,6 +118,28 @@ fn main() {
     let mut ctx = Context::new();
     ctx.set("x", quickpython::Value::Int(42));
     ctx.eval("print(x + 1)").unwrap();
+}
+```
+
+### Async/await example
+
+```rust
+use quickpython::Context;
+
+fn main() {
+    let mut ctx = Context::new();
+    
+    // Run async Python code
+    ctx.eval(r#"
+import asyncio
+
+async def delayed_greeting(name):
+    await asyncio.sleep(0.5)
+    return f"Hello, {name}!"
+
+result = await delayed_greeting("World")
+print(result)
+"#).unwrap();
 }
 ```
 
