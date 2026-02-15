@@ -248,3 +248,37 @@ When implementing new tasks:
 - `spec/exception-system.md` - Exception handling design
 
 **Note:** Spec files describe ideal architecture; actual implementation is simpler in v0.1.1.
+
+## Programming Principles
+
+This project follows the engineering philosophy of Linus Torvalds and John Carmack:
+
+### Code Quality Over Cleverness
+- **Simple, obvious code beats clever code** - If it's hard to understand, it's wrong
+- **Readability first** - Code is read far more often than written
+- **No premature optimization** - Make it work, make it right, then make it fast
+- **Avoid abstraction layers** - Every layer has a cost; only add them when clearly beneficial
+
+### Performance Through Simplicity
+- **Measure, don't guess** - Profile before optimizing
+- **Data structure choice matters more than algorithm tricks** - Cache-friendly data structures win
+- **Keep hot paths simple** - The VM main loop should be straightforward, not clever
+
+### Engineering Discipline
+- **Fix the root cause, not symptoms** - Understand the problem before coding the solution
+- **Delete code aggressively** - The best code is no code; remove unused features/abstractions
+- **Small, focused changes** - Large refactors are where bugs hide
+- **When in doubt, keep it simple** - Complexity is the enemy of reliability
+
+### Specific to This Project
+- **Desugaring over new bytecode** - F-strings and list comprehensions desugar to simple instructions
+- **Sync API with async internals** - Use `block_on` rather than forcing callers to be async
+- **Reference counting over complex GC** - Simple, predictable, deterministic
+- **Content equality over pointer equality** - Lists/tuples compare by value, not identity
+
+When adding features, ask:
+1. Can this be implemented by desugaring to existing instructions?
+2. Does this add a new abstraction layer, or simplify an existing one?
+3. Will this still make sense when reading the code in 6 months?
+4. Is there a simpler way that's "good enough"?
+
