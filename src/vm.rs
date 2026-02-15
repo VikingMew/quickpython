@@ -2009,6 +2009,26 @@ impl VM {
                         // Signal that we shouldn't update IP again in main loop
                         *ip = usize::MAX;
                     }
+                    Value::AsyncSleep(seconds) => {
+                        // Use Tokio to actually sleep asynchronously
+                        use std::time::Duration;
+                        use tokio::runtime::Runtime;
+
+                        let rt = Runtime::new().map_err(|e| {
+                            Value::error(
+                                ExceptionType::RuntimeError,
+                                format!("Failed to create Tokio runtime: {}", e),
+                            )
+                        })?;
+
+                        rt.block_on(async {
+                            tokio::time::sleep(Duration::from_secs_f64(seconds)).await;
+                        });
+
+                        // Push None as the result
+                        self.stack.push(Value::None);
+                        *ip += 1;
+                    }
                     _ => {
                         return Err(Value::error(
                             ExceptionType::TypeError,
@@ -2146,6 +2166,7 @@ impl VM {
                 print!("<class '{}'>", type_name);
             }
             Value::Coroutine(func, _) => print!("<coroutine object {}>", func.name),
+            Value::AsyncSleep(seconds) => print!("<async sleep {}>", seconds),
         }
     }
 
@@ -2339,6 +2360,7 @@ impl VM {
             Value::Slice { .. } => "slice",
             Value::Type(_) => "type",
             Value::Coroutine(_, _) => "coroutine",
+            Value::AsyncSleep(_) => "async_sleep",
         }
     }
 

@@ -3095,4 +3095,136 @@ result = await outer(5)
         let result = ctx.eval("result").unwrap();
         assert_eq!(result, Value::Int(11));
     }
+
+    // Tests for asyncio.sleep - true async behavior
+    #[test]
+    fn test_asyncio_sleep_basic() {
+        let mut ctx = Context::new();
+        let start = std::time::Instant::now();
+        ctx.eval(
+            r#"
+import asyncio
+
+async def test():
+    await asyncio.sleep(0.1)
+    return "done"
+
+result = await test()
+"#,
+        )
+        .unwrap();
+        let elapsed = start.elapsed();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::String("done".to_string()));
+        // Verify it actually slept (at least 100ms)
+        assert!(elapsed.as_millis() >= 100);
+    }
+
+    #[test]
+    fn test_asyncio_sleep_with_int() {
+        let mut ctx = Context::new();
+        let start = std::time::Instant::now();
+        ctx.eval(
+            r#"
+import asyncio
+await asyncio.sleep(0)
+"#,
+        )
+        .unwrap();
+        let elapsed = start.elapsed();
+        // Should complete quickly
+        assert!(elapsed.as_millis() < 50);
+    }
+
+    #[test]
+    fn test_asyncio_sleep_with_float() {
+        let mut ctx = Context::new();
+        let start = std::time::Instant::now();
+        ctx.eval(
+            r#"
+import asyncio
+await asyncio.sleep(0.05)
+"#,
+        )
+        .unwrap();
+        let elapsed = start.elapsed();
+        // Should sleep at least 50ms
+        assert!(elapsed.as_millis() >= 50);
+    }
+
+    #[test]
+    fn test_asyncio_sleep_negative_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+import asyncio
+await asyncio.sleep(-1)
+"#,
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("ValueError"));
+        assert!(err.contains("non-negative"));
+    }
+
+    #[test]
+    fn test_asyncio_sleep_wrong_type_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+import asyncio
+await asyncio.sleep("hello")
+"#,
+        );
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("TypeError"));
+        assert!(err.contains("must be a number"));
+    }
+
+    #[test]
+    fn test_asyncio_sleep_in_async_function() {
+        let mut ctx = Context::new();
+        let start = std::time::Instant::now();
+        ctx.eval(
+            r#"
+import asyncio
+
+async def delayed_add(x, y):
+    await asyncio.sleep(0.1)
+    return x + y
+
+result = await delayed_add(3, 4)
+"#,
+        )
+        .unwrap();
+        let elapsed = start.elapsed();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::Int(7));
+        assert!(elapsed.as_millis() >= 100);
+    }
+
+    #[test]
+    fn test_asyncio_sleep_multiple_awaits() {
+        let mut ctx = Context::new();
+        let start = std::time::Instant::now();
+        ctx.eval(
+            r#"
+import asyncio
+
+async def multi_sleep():
+    await asyncio.sleep(0.05)
+    await asyncio.sleep(0.05)
+    return "done"
+
+result = await multi_sleep()
+"#,
+        )
+        .unwrap();
+        let elapsed = start.elapsed();
+        let result = ctx.eval("result").unwrap();
+        assert_eq!(result, Value::String("done".to_string()));
+        // Should sleep at least 100ms total
+        assert!(elapsed.as_millis() >= 100);
+    }
 }

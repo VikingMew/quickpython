@@ -206,6 +206,7 @@ pub enum Value {
     Iterator(Rc<RefCell<IteratorState>>),
     Function(Function),
     Coroutine(Function, Vec<Value>), // (async function, captured args)
+    AsyncSleep(f64),                 // Async sleep operation (seconds)
     Exception(ExceptionValue),
     Module(Rc<RefCell<Module>>),
     NativeFunction(NativeFunction),
@@ -244,6 +245,7 @@ impl std::fmt::Debug for Value {
             Value::Iterator(i) => write!(f, "Iterator({:?})", i),
             Value::Function(func) => write!(f, "Function({:?})", func),
             Value::Coroutine(func, _) => write!(f, "Coroutine({:?})", func.name),
+            Value::AsyncSleep(seconds) => write!(f, "AsyncSleep({})", seconds),
             Value::Exception(e) => write!(f, "Exception({:?})", e),
             Value::Module(m) => write!(f, "Module({:?})", m),
             Value::NativeFunction(_) => write!(f, "NativeFunction(<native>)"),
@@ -342,6 +344,7 @@ impl Value {
             Value::Iterator(_) => true,
             Value::Function(_) => true,
             Value::Coroutine(_, _) => true,
+            Value::AsyncSleep(_) => true,
             Value::Exception(_) => true,
             Value::Module(_) => true,
             Value::NativeFunction(_) => true,
@@ -383,6 +386,7 @@ impl PartialEq for Value {
             (Value::Iterator(a), Value::Iterator(b)) => Rc::ptr_eq(a, b),
             (Value::Function(a), Value::Function(b)) => a == b,
             (Value::Coroutine(f1, _), Value::Coroutine(f2, _)) => f1 == f2,
+            (Value::AsyncSleep(a), Value::AsyncSleep(b)) => a == b,
             (Value::Exception(a), Value::Exception(b)) => {
                 a.exception_type == b.exception_type && a.message == b.message
             }
