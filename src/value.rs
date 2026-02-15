@@ -109,6 +109,10 @@ pub enum IteratorState {
         keys: Vec<DictKey>,
         index: usize,
     },
+    String {
+        chars: Vec<char>,
+        index: usize,
+    },
 }
 
 /// Exception type enumeration

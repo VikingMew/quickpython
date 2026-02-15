@@ -1708,6 +1708,11 @@ impl VM {
                         let iter_state = IteratorState::DictKeys { keys, index: 0 };
                         Value::Iterator(Rc::new(RefCell::new(iter_state)))
                     }
+                    Value::String(s) => {
+                        let chars: Vec<char> = s.chars().collect();
+                        let iter_state = IteratorState::String { chars, index: 0 };
+                        Value::Iterator(Rc::new(RefCell::new(iter_state)))
+                    }
                     Value::Iterator(_) => obj, // 已经是迭代器
                     _ => {
                         return Err(Value::error(
@@ -1779,6 +1784,15 @@ impl VM {
                                         DictKey::Int(i) => Value::Int(*i),
                                     };
                                     Some(value)
+                                } else {
+                                    None
+                                }
+                            }
+                            IteratorState::String { chars, index } => {
+                                if *index < chars.len() {
+                                    let ch = chars[*index];
+                                    *index += 1;
+                                    Some(Value::String(ch.to_string()))
                                 } else {
                                     None
                                 }

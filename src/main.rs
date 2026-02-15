@@ -2931,4 +2931,28 @@ def process(value):
         let expected = ctx.eval("[9, 16, 25]").unwrap();
         assert_eq!(result, expected);
     }
+
+    #[test]
+    fn test_listcomp_string_iteration() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("[c for c in 'hello']").unwrap();
+        let expected = ctx.eval("['h', 'e', 'l', 'l', 'o']").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_string_iteration_for_loop() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+result = []
+for c in "abc":
+    result.append(c)
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("result").unwrap();
+        let expected = ctx.eval("['a', 'b', 'c']").unwrap();
+        assert_eq!(result, expected);
+    }
 }
