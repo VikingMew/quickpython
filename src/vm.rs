@@ -1003,18 +1003,13 @@ impl VM {
                     Value::None => "None".to_string(),
                     Value::List(list) => {
                         // "[1, 2, 3]"
-                        let items: Vec<String> = list
-                            .borrow()
-                            .items
-                            .iter()
-                            .map(|v| Self::value_repr(v))
-                            .collect();
+                        let items: Vec<String> =
+                            list.borrow().items.iter().map(Self::value_repr).collect();
                         format!("[{}]", items.join(", "))
                     }
                     Value::Tuple(tuple) => {
                         // "(1, 2, 3)"
-                        let items: Vec<String> =
-                            tuple.iter().map(|v| Self::value_repr(v)).collect();
+                        let items: Vec<String> = tuple.iter().map(Self::value_repr).collect();
                         if tuple.len() == 1 {
                             format!("({},)", items[0])
                         } else {
@@ -1062,17 +1057,17 @@ impl VM {
                     ));
                 };
 
-                let result = match (&obj, expected_type) {
-                    (Value::Int(_), crate::value::TypeObject::Int) => true,
-                    (Value::Float(_), crate::value::TypeObject::Float) => true,
-                    (Value::Bool(_), crate::value::TypeObject::Bool) => true,
-                    (Value::String(_), crate::value::TypeObject::Str) => true,
-                    (Value::List(_), crate::value::TypeObject::List) => true,
-                    (Value::Dict(_), crate::value::TypeObject::Dict) => true,
-                    (Value::Tuple(_), crate::value::TypeObject::Tuple) => true,
-                    (Value::None, crate::value::TypeObject::NoneType) => true,
-                    _ => false,
-                };
+                let result = matches!(
+                    (&obj, expected_type),
+                    (Value::Int(_), crate::value::TypeObject::Int)
+                        | (Value::Float(_), crate::value::TypeObject::Float)
+                        | (Value::Bool(_), crate::value::TypeObject::Bool)
+                        | (Value::String(_), crate::value::TypeObject::Str)
+                        | (Value::List(_), crate::value::TypeObject::List)
+                        | (Value::Dict(_), crate::value::TypeObject::Dict)
+                        | (Value::Tuple(_), crate::value::TypeObject::Tuple)
+                        | (Value::None, crate::value::TypeObject::NoneType)
+                );
 
                 self.stack.push(Value::Bool(result));
                 *ip += 1;

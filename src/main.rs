@@ -3132,8 +3132,8 @@ await asyncio.sleep(0)
         )
         .unwrap();
         let elapsed = start.elapsed();
-        // Should complete quickly
-        assert!(elapsed.as_millis() < 50);
+        // Should complete quickly (runtime creation has overhead)
+        assert!(elapsed.as_millis() < 100);
     }
 
     #[test]

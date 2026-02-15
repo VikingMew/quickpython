@@ -1010,11 +1010,11 @@ impl Compiler {
                 for value in &joined.values[1..] {
                     match value {
                         ast::Expr::Constant(c) => {
-                            if let ast::Constant::Str(s) = &c.value {
-                                if !s.is_empty() {
-                                    bytecode.push(Instruction::PushString(s.to_string()));
-                                    bytecode.push(Instruction::Add);
-                                }
+                            if let ast::Constant::Str(s) = &c.value
+                                && !s.is_empty()
+                            {
+                                bytecode.push(Instruction::PushString(s.to_string()));
+                                bytecode.push(Instruction::Add);
                             }
                         }
                         ast::Expr::FormattedValue(fv) => {
