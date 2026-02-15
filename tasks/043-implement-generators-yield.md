@@ -1,9 +1,9 @@
 # Task 043: Implement Generators and `yield`
 
-**Status**: Blocked - Requires advanced VM features
+**Status**: Pending
 **Created**: 2026-02-15
 **Priority**: High
-**Blocked by**: Need to implement frame state preservation and resumable execution
+**Design**: See `spec/generators.md` for detailed implementation design
 
 ## Overview
 
@@ -59,6 +59,25 @@ pub struct Generator {
 
 ### 5. Update Function Type
 Add `is_generator: bool` field to `Function` struct.
+
+## Implementation Notes
+
+See `spec/generators.md` for complete design specification.
+
+**Key points:**
+1. Add `Generator(Rc<RefCell<GeneratorState>>)` to Value enum
+2. GeneratorState preserves: function, frame, IP, stack, finished flag
+3. Compiler detects `yield` in function AST, marks as generator
+4. Calling generator function creates generator object (doesn't execute)
+5. `next()` builtin resumes execution until next yield
+6. Integrate with existing `GetIter`/`ForIter` for `for` loops
+7. `return` in generator raises StopIteration
+
+**Implementation strategy:**
+- Generator state preservation is similar to how Coroutine works
+- Reuse existing Frame structure for local variables
+- Save/restore IP and stack on each yield/resume cycle
+- No need for complex async runtime - generators are synchronous
 
 ## Key Implementation Notes
 
