@@ -194,6 +194,11 @@ pub enum Value {
     List(Rc<RefCell<ListValue>>),
     Dict(Rc<RefCell<HashMap<DictKey, Value>>>),
     Tuple(Rc<Vec<Value>>), // Immutable sequence
+    Slice {
+        start: Option<i32>,
+        stop: Option<i32>,
+        step: Option<i32>,
+    },
     Iterator(Rc<RefCell<IteratorState>>),
     Function(Function),
     Exception(ExceptionValue),
@@ -202,6 +207,19 @@ pub enum Value {
     BoundMethod(Box<Value>, String), // (receiver, method_name)
     Regex(Rc<Regex>),
     Match(Rc<MatchObject>),
+    Type(TypeObject),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TypeObject {
+    Int,
+    Float,
+    Bool,
+    Str,
+    List,
+    Dict,
+    Tuple,
+    NoneType,
 }
 
 impl std::fmt::Debug for Value {
@@ -215,6 +233,9 @@ impl std::fmt::Debug for Value {
             Value::List(l) => write!(f, "List({:?})", l),
             Value::Dict(d) => write!(f, "Dict({:?})", d),
             Value::Tuple(t) => write!(f, "Tuple({:?})", t),
+            Value::Slice { start, stop, step } => {
+                write!(f, "Slice({:?}:{:?}:{:?})", start, stop, step)
+            }
             Value::Iterator(i) => write!(f, "Iterator({:?})", i),
             Value::Function(func) => write!(f, "Function({:?})", func),
             Value::Exception(e) => write!(f, "Exception({:?})", e),
@@ -223,6 +244,7 @@ impl std::fmt::Debug for Value {
             Value::BoundMethod(_, method_name) => write!(f, "BoundMethod(<{}>)", method_name),
             Value::Regex(_) => write!(f, "Regex(<pattern>)"),
             Value::Match(m) => write!(f, "Match({:?})", m),
+            Value::Type(t) => write!(f, "Type({:?})", t),
         }
     }
 }
@@ -309,6 +331,7 @@ impl Value {
             Value::List(list) => !list.borrow().items.is_empty(),
             Value::Dict(dict) => !dict.borrow().is_empty(),
             Value::Tuple(tuple) => !tuple.is_empty(),
+            Value::Slice { .. } => true,
             Value::Iterator(_) => true,
             Value::Function(_) => true,
             Value::Exception(_) => true,
@@ -317,6 +340,7 @@ impl Value {
             Value::BoundMethod(_, _) => true,
             Value::Regex(_) => true,
             Value::Match(_) => true,
+            Value::Type(_) => true,
         }
     }
 }
@@ -329,9 +353,25 @@ impl PartialEq for Value {
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::None, Value::None) => true,
             (Value::String(a), Value::String(b)) => a == b,
-            (Value::List(a), Value::List(b)) => Rc::ptr_eq(a, b),
+            (Value::List(a), Value::List(b)) => {
+                let a_items = &a.borrow().items;
+                let b_items = &b.borrow().items;
+                a_items == b_items
+            }
             (Value::Dict(a), Value::Dict(b)) => Rc::ptr_eq(a, b),
-            (Value::Tuple(a), Value::Tuple(b)) => Rc::ptr_eq(a, b),
+            (Value::Tuple(a), Value::Tuple(b)) => a.as_ref() == b.as_ref(),
+            (
+                Value::Slice {
+                    start: s1,
+                    stop: st1,
+                    step: step1,
+                },
+                Value::Slice {
+                    start: s2,
+                    stop: st2,
+                    step: step2,
+                },
+            ) => s1 == s2 && st1 == st2 && step1 == step2,
             (Value::Iterator(a), Value::Iterator(b)) => Rc::ptr_eq(a, b),
             (Value::Function(a), Value::Function(b)) => a == b,
             (Value::Exception(a), Value::Exception(b)) => {
@@ -342,6 +382,7 @@ impl PartialEq for Value {
             (Value::BoundMethod(a1, m1), Value::BoundMethod(a2, m2)) => a1 == a2 && m1 == m2,
             (Value::Regex(a), Value::Regex(b)) => Rc::ptr_eq(a, b),
             (Value::Match(a), Value::Match(b)) => Rc::ptr_eq(a, b),
+            (Value::Type(a), Value::Type(b)) => a == b,
             _ => false,
         }
     }

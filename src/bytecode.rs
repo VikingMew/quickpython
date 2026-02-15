@@ -7,6 +7,7 @@ pub enum Instruction {
     PushBool(bool),
     PushNone,
     PushString(String),
+    PushType(crate::value::TypeObject), // Push a type object
     Pop,
 
     // 算术运算
@@ -58,6 +59,7 @@ pub enum Instruction {
     Str,          // str() 类型转换
     Len,          // len() 函数
     Range,        // range() 函数，参数数量在栈上
+    IsInstance,   // isinstance() 函数，检查对象类型
 
     // 列表和字典
     BuildList(usize),          // 从栈顶取 n 个元素构建列表
@@ -65,6 +67,8 @@ pub enum Instruction {
     BuildTuple(usize),         // 从栈顶取 n 个元素构建元组
     GetItem,                   // 索引访问 list[i] 或 dict[key]
     SetItem,                   // 索引赋值 list[i] = x 或 dict[key] = x
+    BuildSlice,                // 创建切片对象 (start, stop, step)
+    GetItemSlice,              // 使用切片获取元素
     CallMethod(String, usize), // 方法调用 obj.method(args)
     UnpackSequence(usize),     // 解包序列到 n 个值
 

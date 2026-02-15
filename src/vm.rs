@@ -190,6 +190,10 @@ impl VM {
                 self.stack.push(Value::String(s.clone()));
                 *ip += 1;
             }
+            Instruction::PushType(t) => {
+                self.stack.push(Value::Type(*t));
+                *ip += 1;
+            }
             Instruction::Pop => {
                 self.stack
                     .pop()
@@ -1031,6 +1035,38 @@ impl VM {
                 self.stack.push(Value::String(result));
                 *ip += 1;
             }
+            Instruction::IsInstance => {
+                let type_obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let Value::Type(expected_type) = type_obj else {
+                    return Err(Value::error(
+                        ExceptionType::TypeError,
+                        "isinstance() arg 2 must be a type",
+                    ));
+                };
+
+                let result = match (&obj, expected_type) {
+                    (Value::Int(_), crate::value::TypeObject::Int) => true,
+                    (Value::Float(_), crate::value::TypeObject::Float) => true,
+                    (Value::Bool(_), crate::value::TypeObject::Bool) => true,
+                    (Value::String(_), crate::value::TypeObject::Str) => true,
+                    (Value::List(_), crate::value::TypeObject::List) => true,
+                    (Value::Dict(_), crate::value::TypeObject::Dict) => true,
+                    (Value::Tuple(_), crate::value::TypeObject::Tuple) => true,
+                    (Value::None, crate::value::TypeObject::NoneType) => true,
+                    _ => false,
+                };
+
+                self.stack.push(Value::Bool(result));
+                *ip += 1;
+            }
             Instruction::Len => {
                 let value = self
                     .stack
@@ -1144,6 +1180,124 @@ impl VM {
                         return Err(Value::error(
                             ExceptionType::TypeError,
                             "object is not subscriptable",
+                        ));
+                    }
+                }
+                *ip += 1;
+            }
+            Instruction::BuildSlice => {
+                let step = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let stop = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let start = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let start_val = match start {
+                    Value::None => None,
+                    Value::Int(i) => Some(i),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "slice indices must be integers or None",
+                        ));
+                    }
+                };
+
+                let stop_val = match stop {
+                    Value::None => None,
+                    Value::Int(i) => Some(i),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "slice indices must be integers or None",
+                        ));
+                    }
+                };
+
+                let step_val = match step {
+                    Value::None => Some(1), // Default step is 1
+                    Value::Int(i) => {
+                        if i == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ValueError,
+                                "slice step cannot be zero",
+                            ));
+                        }
+                        Some(i)
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "slice indices must be integers or None",
+                        ));
+                    }
+                };
+
+                self.stack.push(Value::Slice {
+                    start: start_val,
+                    stop: stop_val,
+                    step: step_val,
+                });
+                *ip += 1;
+            }
+            Instruction::GetItemSlice => {
+                let slice = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let Value::Slice { start, stop, step } = slice else {
+                    return Err(Value::error(ExceptionType::TypeError, "expected slice"));
+                };
+
+                match obj {
+                    Value::List(list) => {
+                        let items = &list.borrow().items;
+                        let (start_idx, stop_idx, step_val) =
+                            Self::compute_slice_indices(start, stop, step, items.len());
+                        let result_items =
+                            Self::slice_sequence(items, start_idx, stop_idx, step_val);
+                        self.stack.push(Value::List(Rc::new(RefCell::new(
+                            crate::value::ListValue::with_items(result_items),
+                        ))));
+                    }
+                    Value::String(s) => {
+                        let chars: Vec<char> = s.chars().collect();
+                        let (start_idx, stop_idx, step_val) =
+                            Self::compute_slice_indices(start, stop, step, chars.len());
+
+                        let char_values: Vec<Value> =
+                            chars.iter().map(|c| Value::String(c.to_string())).collect();
+                        let result_chars =
+                            Self::slice_sequence(&char_values, start_idx, stop_idx, step_val);
+
+                        let result: String =
+                            result_chars.iter().filter_map(|v| v.as_string()).collect();
+
+                        self.stack.push(Value::String(result));
+                    }
+                    Value::Tuple(tuple) => {
+                        let (start_idx, stop_idx, step_val) =
+                            Self::compute_slice_indices(start, stop, step, tuple.len());
+                        let result_items =
+                            Self::slice_sequence(tuple.as_ref(), start_idx, stop_idx, step_val);
+                        self.stack.push(Value::Tuple(Rc::new(result_items)));
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!("'{}' object is not subscriptable", Self::type_name(&obj)),
                         ));
                     }
                 }
@@ -1915,6 +2069,22 @@ impl VM {
             Value::BoundMethod(_, method_name) => print!("<bound method {}>", method_name),
             Value::Regex(_) => print!("<regex pattern>"),
             Value::Match(m) => print!("<re.Match object; span=({}, {})>", m.start, m.end),
+            Value::Slice { start, stop, step } => {
+                print!("slice({:?}, {:?}, {:?})", start, stop, step);
+            }
+            Value::Type(t) => {
+                let type_name = match t {
+                    crate::value::TypeObject::Int => "int",
+                    crate::value::TypeObject::Float => "float",
+                    crate::value::TypeObject::Bool => "bool",
+                    crate::value::TypeObject::Str => "str",
+                    crate::value::TypeObject::List => "list",
+                    crate::value::TypeObject::Dict => "dict",
+                    crate::value::TypeObject::Tuple => "tuple",
+                    crate::value::TypeObject::NoneType => "NoneType",
+                };
+                print!("<class '{}'>", type_name);
+            }
         }
     }
 
@@ -2105,6 +2275,8 @@ impl VM {
             Value::BoundMethod(_, _) => "method",
             Value::Regex(_) => "Pattern",
             Value::Match(_) => "Match",
+            Value::Slice { .. } => "slice",
+            Value::Type(_) => "type",
         }
     }
 
@@ -2118,5 +2290,69 @@ impl VM {
             Value::None => "None".to_string(),
             _ => format!("{:?}", value),
         }
+    }
+
+    /// Compute actual slice indices from start, stop, step and sequence length
+    fn compute_slice_indices(
+        start: Option<i32>,
+        stop: Option<i32>,
+        step: Option<i32>,
+        length: usize,
+    ) -> (i32, i32, i32) {
+        let len = length as i32;
+        let step = step.unwrap_or(1);
+
+        if step == 0 {
+            return (0, 0, 1); // Invalid step, return empty slice
+        }
+
+        let (default_start, default_stop) = if step > 0 {
+            (0, len)
+        } else {
+            (len - 1, -len - 1)
+        };
+
+        let start = start.unwrap_or(default_start);
+        let stop = stop.unwrap_or(default_stop);
+
+        // Normalize negative indices
+        let start = if start < 0 {
+            (start + len).max(0)
+        } else {
+            start.min(len)
+        };
+
+        let stop = if stop < 0 {
+            (stop + len).max(-1)
+        } else {
+            stop.min(len)
+        };
+
+        (start, stop, step)
+    }
+
+    /// Extract values from a sequence based on slice indices
+    fn slice_sequence(items: &[Value], start: i32, stop: i32, step: i32) -> Vec<Value> {
+        let mut result = Vec::new();
+
+        if step > 0 {
+            let mut i = start;
+            while i < stop && i < items.len() as i32 {
+                if i >= 0 {
+                    result.push(items[i as usize].clone());
+                }
+                i += step;
+            }
+        } else {
+            let mut i = start;
+            while i > stop && i >= 0 {
+                if i < items.len() as i32 {
+                    result.push(items[i as usize].clone());
+                }
+                i += step;
+            }
+        }
+
+        result
     }
 }

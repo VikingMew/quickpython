@@ -12,6 +12,7 @@ pub struct Compiler {
     local_vars: HashMap<String, usize>,
     local_count: usize,
     loop_stack: Vec<LoopContext>, // 循环栈
+    temp_counter: usize,          // 临时变量计数器
 }
 
 impl Compiler {
@@ -20,6 +21,7 @@ impl Compiler {
             local_vars: HashMap::new(),
             local_count: 0,
             loop_stack: Vec::new(),
+            temp_counter: 0,
         };
         let mut bytecode = Vec::new();
 
@@ -131,6 +133,7 @@ impl Compiler {
                     local_vars: HashMap::new(),
                     local_count: 0,
                     loop_stack: Vec::new(),
+                    temp_counter: 0,
                 };
 
                 // 将参数注册为局部变量
@@ -530,11 +533,28 @@ impl Compiler {
             }
             ast::Expr::Name(name) => {
                 let var_name = name.id.to_string();
-                // 检查是否是局部变量
-                if let Some(&index) = self.local_vars.get(&var_name) {
-                    bytecode.push(Instruction::GetLocal(index));
-                } else {
-                    bytecode.push(Instruction::GetGlobal(var_name));
+
+                // Check if it's a type name
+                match var_name.as_str() {
+                    "int" => bytecode.push(Instruction::PushType(crate::value::TypeObject::Int)),
+                    "float" => {
+                        bytecode.push(Instruction::PushType(crate::value::TypeObject::Float))
+                    }
+                    "bool" => bytecode.push(Instruction::PushType(crate::value::TypeObject::Bool)),
+                    "str" => bytecode.push(Instruction::PushType(crate::value::TypeObject::Str)),
+                    "list" => bytecode.push(Instruction::PushType(crate::value::TypeObject::List)),
+                    "dict" => bytecode.push(Instruction::PushType(crate::value::TypeObject::Dict)),
+                    "tuple" => {
+                        bytecode.push(Instruction::PushType(crate::value::TypeObject::Tuple))
+                    }
+                    _ => {
+                        // Regular variable - check if it's local or global
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::GetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::GetGlobal(var_name));
+                        }
+                    }
                 }
                 Ok(())
             }
@@ -610,6 +630,19 @@ impl Compiler {
                             bytecode.push(Instruction::Str);
                             return Ok(());
                         }
+                        "isinstance" => {
+                            if call.args.len() != 2 {
+                                return Err(format!(
+                                    "isinstance() takes exactly 2 arguments ({} given)",
+                                    call.args.len()
+                                ));
+                            }
+                            // Compile both arguments
+                            self.compile_expr(&call.args[0], bytecode)?;
+                            self.compile_expr(&call.args[1], bytecode)?;
+                            bytecode.push(Instruction::IsInstance);
+                            return Ok(());
+                        }
                         "len" => {
                             if call.args.len() != 1 {
                                 return Err("len() takes exactly one argument".to_string());
@@ -668,6 +701,96 @@ impl Compiler {
                 bytecode.push(Instruction::BuildList(list.elts.len()));
                 Ok(())
             }
+            ast::Expr::ListComp(comp) => {
+                // 列表推导式: [expr for var in iterable if condition]
+                // 转换为:
+                // _temp = []
+                // for var in iterable:
+                //     if condition:
+                //         _temp.append(expr)
+                // result = _temp
+
+                // 只支持单个 generator（Phase 1）
+                if comp.generators.len() != 1 {
+                    return Err("Nested list comprehensions not supported yet".to_string());
+                }
+
+                let generator = &comp.generators[0];
+
+                // 创建临时变量名
+                let temp_var = format!("_listcomp_{}", self.temp_counter);
+                self.temp_counter += 1;
+
+                // 创建空列表并存储到临时变量
+                bytecode.push(Instruction::BuildList(0));
+                bytecode.push(Instruction::SetGlobal(temp_var.clone()));
+                bytecode.push(Instruction::Pop);
+
+                // 编译迭代器表达式
+                self.compile_expr(&generator.iter, bytecode)?;
+                bytecode.push(Instruction::GetIter);
+
+                // 循环开始
+                let loop_start = bytecode.len();
+                bytecode.push(Instruction::ForIter(0)); // 占位符，稍后回填
+
+                // 绑定循环变量
+                match &generator.target {
+                    ast::Expr::Name(name) => {
+                        let var_name = name.id.to_string();
+                        if let Some(&index) = self.local_vars.get(&var_name) {
+                            bytecode.push(Instruction::SetLocal(index));
+                        } else {
+                            bytecode.push(Instruction::SetGlobal(var_name));
+                        }
+                        bytecode.push(Instruction::Pop);
+                    }
+                    _ => {
+                        return Err(
+                            "Only simple variable names are supported in list comprehensions"
+                                .to_string(),
+                        );
+                    }
+                }
+
+                // 编译过滤条件（if 子句）
+                let mut skip_append_jumps = Vec::new();
+                for filter in &generator.ifs {
+                    self.compile_expr(filter, bytecode)?;
+                    // 如果条件为 false，跳过 append
+                    let jump_pos = bytecode.len();
+                    bytecode.push(Instruction::JumpIfFalse(0)); // 占位符
+                    skip_append_jumps.push(jump_pos);
+                }
+
+                // 加载临时列表（对象）
+                bytecode.push(Instruction::GetGlobal(temp_var.clone()));
+
+                // 编译元素表达式（参数）
+                self.compile_expr(&comp.elt, bytecode)?;
+
+                // 调用 append 方法
+                bytecode.push(Instruction::CallMethod("append".to_string(), 1));
+                bytecode.push(Instruction::Pop); // 丢弃 None 返回值
+
+                // 回填跳过 append 的跳转（如果有过滤条件）
+                let after_append = bytecode.len();
+                for jump_pos in skip_append_jumps {
+                    bytecode[jump_pos] = Instruction::JumpIfFalse(after_append);
+                }
+
+                // 跳回循环开始
+                bytecode.push(Instruction::Jump(loop_start));
+
+                // 循环结束，回填 ForIter 的跳转
+                let loop_end = bytecode.len();
+                bytecode[loop_start] = Instruction::ForIter(loop_end);
+
+                // 加载结果列表
+                bytecode.push(Instruction::GetGlobal(temp_var));
+
+                Ok(())
+            }
             ast::Expr::Tuple(tuple) => {
                 // 编译元组元素
                 for elt in &tuple.elts {
@@ -692,9 +815,43 @@ impl Compiler {
             ast::Expr::Subscript(subscript) => {
                 // 编译对象
                 self.compile_expr(&subscript.value, bytecode)?;
-                // 编译索引
-                self.compile_expr(&subscript.slice, bytecode)?;
-                bytecode.push(Instruction::GetItem);
+
+                // 检查是否是切片
+                match &*subscript.slice {
+                    ast::Expr::Slice(slice) => {
+                        // 切片: obj[start:stop:step]
+
+                        // Push start (or None)
+                        if let Some(start) = &slice.lower {
+                            self.compile_expr(start, bytecode)?;
+                        } else {
+                            bytecode.push(Instruction::PushNone);
+                        }
+
+                        // Push stop (or None)
+                        if let Some(stop) = &slice.upper {
+                            self.compile_expr(stop, bytecode)?;
+                        } else {
+                            bytecode.push(Instruction::PushNone);
+                        }
+
+                        // Push step (or None)
+                        if let Some(step) = &slice.step {
+                            self.compile_expr(step, bytecode)?;
+                        } else {
+                            bytecode.push(Instruction::PushNone);
+                        }
+
+                        // Create slice and get item
+                        bytecode.push(Instruction::BuildSlice);
+                        bytecode.push(Instruction::GetItemSlice);
+                    }
+                    _ => {
+                        // 普通索引
+                        self.compile_expr(&subscript.slice, bytecode)?;
+                        bytecode.push(Instruction::GetItem);
+                    }
+                }
                 Ok(())
             }
             ast::Expr::Attribute(attribute) => {

@@ -192,6 +192,12 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
         Instruction::Import(_) | Instruction::GetAttr(_) => {
             return Err("Import instructions cannot be serialized yet".to_string());
         }
+        Instruction::BuildSlice | Instruction::GetItemSlice => {
+            return Err("Slice instructions cannot be serialized yet".to_string());
+        }
+        Instruction::PushType(_) | Instruction::IsInstance => {
+            return Err("Type and isinstance instructions cannot be serialized yet".to_string());
+        }
     }
     Ok(())
 }

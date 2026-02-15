@@ -2631,4 +2631,304 @@ def get_name():
         let result = ctx.eval(r#"f"Length: {len(items)}""#).unwrap();
         assert_eq!(result, Value::String("Length: 3".to_string()));
     }
+
+    // Task 035: Slicing tests
+    #[test]
+    fn test_list_slice_basic() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[1:3]").unwrap();
+        let expected = ctx.eval("[1, 2]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_start_only() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[2:]").unwrap();
+        let expected = ctx.eval("[2, 3, 4]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_stop_only() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[:3]").unwrap();
+        let expected = ctx.eval("[0, 1, 2]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_full() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[:]").unwrap();
+        let expected = ctx.eval("[0, 1, 2, 3, 4]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_step() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4, 5, 6]").unwrap();
+        let result = ctx.eval("items[::2]").unwrap();
+        let expected = ctx.eval("[0, 2, 4, 6]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_negative_indices() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[-3:-1]").unwrap();
+        let expected = ctx.eval("[2, 3]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_list_slice_negative_step() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [0, 1, 2, 3, 4]").unwrap();
+        let result = ctx.eval("items[::-1]").unwrap();
+        let expected = ctx.eval("[4, 3, 2, 1, 0]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_string_slice_basic() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello"[1:4]"#).unwrap();
+        assert_eq!(result, Value::String("ell".to_string()));
+    }
+
+    #[test]
+    fn test_string_slice_start_only() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello"[2:]"#).unwrap();
+        assert_eq!(result, Value::String("llo".to_string()));
+    }
+
+    #[test]
+    fn test_string_slice_stop_only() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello"[:3]"#).unwrap();
+        assert_eq!(result, Value::String("hel".to_string()));
+    }
+
+    #[test]
+    fn test_string_slice_step() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello"[::2]"#).unwrap();
+        assert_eq!(result, Value::String("hlo".to_string()));
+    }
+
+    #[test]
+    fn test_string_slice_negative_step() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(r#""hello"[::-1]"#).unwrap();
+        assert_eq!(result, Value::String("olleh".to_string()));
+    }
+
+    #[test]
+    fn test_tuple_slice_basic() {
+        let mut ctx = Context::new();
+        ctx.eval("t = (0, 1, 2, 3, 4)").unwrap();
+        let result = ctx.eval("t[1:3]").unwrap();
+        let expected = ctx.eval("(1, 2)").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_slice_empty_result() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [1, 2, 3]").unwrap();
+        let result = ctx.eval("items[5:10]").unwrap();
+        let expected = ctx.eval("[]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    // Task 036: isinstance() tests
+    #[test]
+    fn test_isinstance_int() {
+        let mut ctx = Context::new();
+        ctx.eval("x = 123").unwrap();
+        let result = ctx.eval("isinstance(x, int)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(x, str)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_float() {
+        let mut ctx = Context::new();
+        ctx.eval("y = 3.14").unwrap();
+        let result = ctx.eval("isinstance(y, float)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(y, int)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_string() {
+        let mut ctx = Context::new();
+        ctx.eval("s = 'hello'").unwrap();
+        let result = ctx.eval("isinstance(s, str)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(s, list)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_bool() {
+        let mut ctx = Context::new();
+        ctx.eval("b = True").unwrap();
+        let result = ctx.eval("isinstance(b, bool)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_isinstance_list() {
+        let mut ctx = Context::new();
+        ctx.eval("lst = [1, 2, 3]").unwrap();
+        let result = ctx.eval("isinstance(lst, list)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(lst, dict)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_dict() {
+        let mut ctx = Context::new();
+        ctx.eval("d = {'a': 1}").unwrap();
+        let result = ctx.eval("isinstance(d, dict)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(d, list)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_tuple() {
+        let mut ctx = Context::new();
+        ctx.eval("t = (1, 2, 3)").unwrap();
+        let result = ctx.eval("isinstance(t, tuple)").unwrap();
+        assert_eq!(result, Value::Bool(true));
+        let result = ctx.eval("isinstance(t, list)").unwrap();
+        assert_eq!(result, Value::Bool(false));
+    }
+
+    #[test]
+    fn test_isinstance_in_condition() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def process(value):
+    if isinstance(value, int):
+        return value * 2
+    elif isinstance(value, str):
+        return value.upper()
+    else:
+        return None
+"#,
+        )
+        .unwrap();
+        let result = ctx.eval("process(5)").unwrap();
+        assert_eq!(result, Value::Int(10));
+        let result = ctx.eval("process('hi')").unwrap();
+        assert_eq!(result, Value::String("HI".to_string()));
+    }
+
+    #[test]
+    fn test_isinstance_wrong_arg_count() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("isinstance(1)");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_isinstance_second_arg_not_type() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("isinstance(1, 'int')");
+        assert!(result.is_err());
+    }
+
+    // Task 037: List Comprehensions tests
+    #[test]
+    fn test_listcomp_basic() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("[x*x for x in range(5)]").unwrap();
+        let expected = ctx.eval("[0, 1, 4, 9, 16]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_with_filter() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("[x for x in range(10) if x % 2 == 0]").unwrap();
+        let expected = ctx.eval("[0, 2, 4, 6, 8]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_string_transformation() {
+        let mut ctx = Context::new();
+        ctx.eval("words = ['hello', 'world']").unwrap();
+        let result = ctx.eval("[w.upper() for w in words]").unwrap();
+        let expected = ctx.eval("['HELLO', 'WORLD']").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_expression() {
+        let mut ctx = Context::new();
+        ctx.eval("nums = [1, 2, 3]").unwrap();
+        let result = ctx.eval("[n * 2 for n in nums]").unwrap();
+        let expected = ctx.eval("[2, 4, 6]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_empty_result() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("[x for x in range(5) if x > 10]").unwrap();
+        let expected = ctx.eval("[]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_multiple_filters() {
+        let mut ctx = Context::new();
+        let result = ctx
+            .eval("[x for x in range(20) if x % 2 == 0 if x % 3 == 0]")
+            .unwrap();
+        let expected = ctx.eval("[0, 6, 12, 18]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_with_variable() {
+        let mut ctx = Context::new();
+        ctx.eval("n = 5").unwrap();
+        let result = ctx.eval("[i for i in range(n)]").unwrap();
+        let expected = ctx.eval("[0, 1, 2, 3, 4]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_complex_expression() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("[x*2 + 1 for x in range(5)]").unwrap();
+        let expected = ctx.eval("[1, 3, 5, 7, 9]").unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_listcomp_from_list() {
+        let mut ctx = Context::new();
+        ctx.eval("items = [1, 2, 3, 4, 5]").unwrap();
+        let result = ctx.eval("[x*x for x in items if x > 2]").unwrap();
+        let expected = ctx.eval("[9, 16, 25]").unwrap();
+        assert_eq!(result, expected);
+    }
 }
