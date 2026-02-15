@@ -27,6 +27,14 @@ cargo test async               # Run all async-related tests
 cargo test --workspace         # Run tests for all workspace members
 ```
 
+### Code Quality
+```bash
+cargo fmt                      # Format code (REQUIRED before commit)
+cargo clippy --workspace -- -D warnings  # Lint code (REQUIRED before commit)
+```
+
+**IMPORTANT:** All commits must pass both `cargo fmt` and `cargo clippy --workspace -- -D warnings` with no errors. Run these commands before committing any code changes.
+
 ### Running
 ```bash
 cargo run -- run script.py           # Execute Python file
