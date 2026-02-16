@@ -51,6 +51,7 @@ pub enum Instruction {
         params: Vec<String>,
         code_len: usize,
         is_async: bool,
+        is_generator: bool,
     },
     Call(usize), // 参数数量
     Return,
@@ -99,6 +100,9 @@ pub enum Instruction {
 
     // 异步支持
     Await, // 等待协程完成
+
+    // 生成器支持
+    Yield, // 暂停生成器并返回值
 }
 
 pub type ByteCode = Vec<Instruction>;

@@ -823,6 +823,7 @@ impl VM {
                 params,
                 code_len,
                 is_async,
+                is_generator,
             } => {
                 let current_frame = self
                     .frames
@@ -836,6 +837,7 @@ impl VM {
                     params: params.clone(),
                     code: func_code,
                     is_async: *is_async,
+                    is_generator: *is_generator,
                 };
                 globals.insert(name.clone(), Value::Function(func));
                 *ip += 1 + code_len;
@@ -885,8 +887,21 @@ impl VM {
                             ));
                         }
 
-                        // 如果是异步函数，返回协程对象而不是执行
-                        if func.is_async {
+                        // 如果是生成器函数，返回生成器对象而不是执行
+                        if func.is_generator {
+                            use crate::value::GeneratorState;
+                            let generator = GeneratorState {
+                                function: func,
+                                locals: args,
+                                ip: 0,
+                                stack: Vec::new(),
+                                finished: false,
+                            };
+                            self.stack
+                                .push(Value::Generator(Rc::new(RefCell::new(generator))));
+                            *ip += 1;
+                        } else if func.is_async {
+                            // 如果是异步函数，返回协程对象而不是执行
                             let coroutine = Value::Coroutine(func, args);
                             self.stack.push(coroutine);
                             *ip += 1;
@@ -1746,7 +1761,8 @@ impl VM {
                         let iter_state = IteratorState::String { chars, index: 0 };
                         Value::Iterator(Rc::new(RefCell::new(iter_state)))
                     }
-                    Value::Iterator(_) => obj, // 已经是迭代器
+                    Value::Generator(_) => obj, // Generator is already iterable
+                    Value::Iterator(_) => obj,  // 已经是迭代器
                     _ => {
                         return Err(Value::error(
                             ExceptionType::TypeError,
@@ -1842,6 +1858,14 @@ impl VM {
                             // 迭代器仍在栈上，会被后续的 Pop 清理
                             *ip = *jump_target;
                         }
+                    }
+                    Value::Generator(_gen_rc) => {
+                        // TODO: Full generator execution support
+                        // For now, generators are not fully supported in for loops
+                        return Err(Value::error(
+                            ExceptionType::RuntimeError,
+                            "Generator execution in for loops not yet fully implemented",
+                        ));
                     }
                     _ => {
                         return Err(Value::error(ExceptionType::TypeError, "Expected iterator"));
@@ -2060,6 +2084,15 @@ impl VM {
                     }
                 }
             }
+            Instruction::Yield => {
+                // Yield should only be called from within next() builtin
+                // This is a marker that execution should pause and return to caller
+                // The actual state saving is handled by next()
+                return Err(Value::error(
+                    ExceptionType::RuntimeError,
+                    "yield outside of next() call",
+                ));
+            }
             Instruction::GetAttr(attr_name) => {
                 let value = self
                     .stack
@@ -2190,6 +2223,10 @@ impl VM {
                 print!("<class '{}'>", type_name);
             }
             Value::Coroutine(func, _) => print!("<coroutine object {}>", func.name),
+            Value::Generator(gen_rc) => {
+                let generator = gen_rc.borrow();
+                print!("<generator object {}>", generator.function.name);
+            }
             Value::AsyncSleep(seconds) => print!("<async sleep {}>", seconds),
         }
     }
@@ -2268,6 +2305,10 @@ impl VM {
                 print!("<class '{}'>", type_name);
             }
             Value::Coroutine(func, _) => print!("<coroutine object {}>", func.name),
+            Value::Generator(gen_rc) => {
+                let generator = gen_rc.borrow();
+                print!("<generator object {}>", generator.function.name);
+            }
             Value::AsyncSleep(seconds) => print!("<async sleep {}>", seconds),
         }
     }
@@ -2462,6 +2503,7 @@ impl VM {
             Value::Slice { .. } => "slice",
             Value::Type(_) => "type",
             Value::Coroutine(_, _) => "coroutine",
+            Value::Generator(_) => "generator",
             Value::AsyncSleep(_) => "async_sleep",
         }
     }

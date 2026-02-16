@@ -13,6 +13,7 @@ pub struct Compiler {
     local_count: usize,
     loop_stack: Vec<LoopContext>, // 循环栈
     temp_counter: usize,          // 临时变量计数器
+    in_generator: bool,           // 是否在生成器函数中
 }
 
 impl Compiler {
@@ -22,6 +23,7 @@ impl Compiler {
             local_count: 0,
             loop_stack: Vec::new(),
             temp_counter: 0,
+            in_generator: false,
         };
         let mut bytecode = Vec::new();
 
@@ -60,6 +62,111 @@ impl Compiler {
         }
     }
 
+    /// Check if a function body contains yield expressions
+    fn contains_yield(stmts: &[ast::Stmt]) -> bool {
+        for stmt in stmts {
+            if Self::stmt_contains_yield(stmt) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn stmt_contains_yield(stmt: &ast::Stmt) -> bool {
+        match stmt {
+            ast::Stmt::Expr(expr_stmt) => Self::expr_contains_yield(&expr_stmt.value),
+            ast::Stmt::Return(ret) => {
+                if let Some(value) = &ret.value {
+                    Self::expr_contains_yield(value)
+                } else {
+                    false
+                }
+            }
+            ast::Stmt::Assign(assign) => Self::expr_contains_yield(&assign.value),
+            ast::Stmt::AugAssign(aug) => Self::expr_contains_yield(&aug.value),
+            ast::Stmt::If(if_stmt) => {
+                Self::expr_contains_yield(&if_stmt.test)
+                    || Self::contains_yield(&if_stmt.body)
+                    || Self::contains_yield(&if_stmt.orelse)
+            }
+            ast::Stmt::While(while_stmt) => {
+                Self::expr_contains_yield(&while_stmt.test)
+                    || Self::contains_yield(&while_stmt.body)
+                    || Self::contains_yield(&while_stmt.orelse)
+            }
+            ast::Stmt::For(for_stmt) => {
+                Self::expr_contains_yield(&for_stmt.iter)
+                    || Self::contains_yield(&for_stmt.body)
+                    || Self::contains_yield(&for_stmt.orelse)
+            }
+            ast::Stmt::Try(try_stmt) => {
+                Self::contains_yield(&try_stmt.body)
+                    || try_stmt.handlers.iter().any(|h| match h {
+                        ast::ExceptHandler::ExceptHandler(eh) => Self::contains_yield(&eh.body),
+                    })
+                    || Self::contains_yield(&try_stmt.orelse)
+                    || Self::contains_yield(&try_stmt.finalbody)
+            }
+            _ => false,
+        }
+    }
+
+    fn expr_contains_yield(expr: &ast::Expr) -> bool {
+        match expr {
+            ast::Expr::Yield(_) | ast::Expr::YieldFrom(_) => true,
+            ast::Expr::BinOp(binop) => {
+                Self::expr_contains_yield(&binop.left) || Self::expr_contains_yield(&binop.right)
+            }
+            ast::Expr::UnaryOp(unary) => Self::expr_contains_yield(&unary.operand),
+            ast::Expr::Compare(cmp) => {
+                Self::expr_contains_yield(&cmp.left)
+                    || cmp.comparators.iter().any(Self::expr_contains_yield)
+            }
+            ast::Expr::Call(call) => {
+                Self::expr_contains_yield(&call.func)
+                    || call.args.iter().any(Self::expr_contains_yield)
+            }
+            ast::Expr::IfExp(if_exp) => {
+                Self::expr_contains_yield(&if_exp.test)
+                    || Self::expr_contains_yield(&if_exp.body)
+                    || Self::expr_contains_yield(&if_exp.orelse)
+            }
+            ast::Expr::List(list) => list.elts.iter().any(Self::expr_contains_yield),
+            ast::Expr::Tuple(tuple) => tuple.elts.iter().any(Self::expr_contains_yield),
+            ast::Expr::Dict(dict) => {
+                dict.keys.iter().any(|k| {
+                    if let Some(key) = k {
+                        Self::expr_contains_yield(key)
+                    } else {
+                        false
+                    }
+                }) || dict.values.iter().any(Self::expr_contains_yield)
+            }
+            ast::Expr::ListComp(comp) => {
+                Self::expr_contains_yield(&comp.elt)
+                    || comp.generators.iter().any(|g| {
+                        Self::expr_contains_yield(&g.iter)
+                            || g.ifs.iter().any(Self::expr_contains_yield)
+                    })
+            }
+            ast::Expr::DictComp(comp) => {
+                Self::expr_contains_yield(&comp.key)
+                    || Self::expr_contains_yield(&comp.value)
+                    || comp.generators.iter().any(|g| {
+                        Self::expr_contains_yield(&g.iter)
+                            || g.ifs.iter().any(Self::expr_contains_yield)
+                    })
+            }
+            ast::Expr::Subscript(sub) => {
+                Self::expr_contains_yield(&sub.value) || Self::expr_contains_yield(&sub.slice)
+            }
+            ast::Expr::Attribute(attr) => Self::expr_contains_yield(&attr.value),
+            ast::Expr::BoolOp(boolop) => boolop.values.iter().any(Self::expr_contains_yield),
+            ast::Expr::Await(await_expr) => Self::expr_contains_yield(&await_expr.value),
+            _ => false,
+        }
+    }
+
     fn compile_function_def(
         &mut self,
         func_def: &ast::StmtFunctionDef,
@@ -74,12 +181,16 @@ impl Compiler {
             .map(|arg| arg.def.arg.to_string())
             .collect();
 
+        // Check if function contains yield
+        let is_generator = Self::contains_yield(&func_def.body);
+
         // 创建新的编译器上下文用于函数体
         let mut func_compiler = Compiler {
             local_vars: HashMap::new(),
             local_count: 0,
             loop_stack: Vec::new(),
             temp_counter: 0,
+            in_generator: is_generator,
         };
 
         // 将参数注册为局部变量
@@ -106,6 +217,7 @@ impl Compiler {
             params,
             code_len,
             is_async,
+            is_generator,
         });
         bytecode.extend(func_bytecode);
 
@@ -192,6 +304,7 @@ impl Compiler {
                     local_count: 0,
                     loop_stack: Vec::new(),
                     temp_counter: 0,
+                    in_generator: false, // Lambda functions cannot be generators
                 };
 
                 // 将参数注册为局部变量
@@ -218,6 +331,7 @@ impl Compiler {
                     params,
                     code_len,
                     is_async: true,
+                    is_generator: false, // Lambda functions cannot be generators
                 });
                 bytecode.extend(func_bytecode);
                 Ok(())
@@ -1162,6 +1276,21 @@ impl Compiler {
                 bytecode.push(Instruction::Await);
                 Ok(())
             }
+            ast::Expr::Yield(yield_expr) => {
+                if !self.in_generator {
+                    return Err("'yield' outside function".to_string());
+                }
+                // 编译 yield 的值（如果有）
+                if let Some(value) = &yield_expr.value {
+                    self.compile_expr(value, bytecode)?;
+                } else {
+                    bytecode.push(Instruction::PushNone);
+                }
+                // 添加 Yield 指令
+                bytecode.push(Instruction::Yield);
+                Ok(())
+            }
+            ast::Expr::YieldFrom(_) => Err("'yield from' is not yet supported".to_string()),
             _ => Err(format!("Unsupported expression: {:?}", expr)),
         }
     }

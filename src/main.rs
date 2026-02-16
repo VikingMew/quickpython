@@ -5075,6 +5075,7 @@ result = await multi_sleep()
             params: vec![],
             code: ByteCode::new(),
             is_async: false,
+            is_generator: false,
         };
         assert!(Value::Function(func).is_truthy());
         assert!(Value::AsyncSleep(1.0).is_truthy());
@@ -7686,6 +7687,173 @@ result = {x % 3: x for x in range(10)}
             assert_eq!(dict.get(&DictKey::Int(2)), Some(&Value::Int(8)));
         } else {
             panic!("Expected dict");
+        }
+    }
+
+    // ===== Generator Tests (Task 043) =====
+
+    #[test]
+    fn test_generator_function_creation() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def simple_gen():
+    yield 1
+    yield 2
+    yield 3
+
+gen = simple_gen()
+"#,
+        )
+        .unwrap();
+
+        // Verify that calling a generator function returns a generator object
+        if let Some(Value::Generator(gen_rc)) = ctx.get("gen") {
+            let generator = gen_rc.borrow();
+            assert_eq!(generator.function.name, "simple_gen");
+            assert!(!generator.finished);
+        } else {
+            panic!("Expected generator object");
+        }
+    }
+
+    #[test]
+    fn test_generator_with_arguments() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def count_up_to(n):
+    i = 0
+    while i < n:
+        yield i
+        i = i + 1
+
+gen = count_up_to(5)
+"#,
+        )
+        .unwrap();
+
+        // Verify generator object is created with arguments
+        if let Some(Value::Generator(gen_rc)) = ctx.get("gen") {
+            let generator = gen_rc.borrow();
+            assert_eq!(generator.function.name, "count_up_to");
+            assert_eq!(generator.locals.len(), 1); // One argument: n
+            assert_eq!(generator.locals[0], Value::Int(5));
+        } else {
+            panic!("Expected generator object");
+        }
+    }
+
+    #[test]
+    fn test_generator_yield_without_value() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def gen_none():
+    yield
+    yield
+    yield
+
+gen = gen_none()
+"#,
+        )
+        .unwrap();
+
+        // Verify generator is created
+        if let Some(Value::Generator(_)) = ctx.get("gen") {
+            // Success - generator created
+        } else {
+            panic!("Expected generator object");
+        }
+    }
+
+    #[test]
+    fn test_generator_is_not_async() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def regular_gen():
+    yield 1
+
+gen = regular_gen()
+"#,
+        )
+        .unwrap();
+
+        // Verify generator function is not marked as async
+        if let Some(Value::Generator(gen_rc)) = ctx.get("gen") {
+            let generator = gen_rc.borrow();
+            assert!(!generator.function.is_async);
+            assert!(generator.function.is_generator);
+        } else {
+            panic!("Expected generator object");
+        }
+    }
+
+    #[test]
+    fn test_yield_outside_function_error() {
+        let mut ctx = Context::new();
+        let result = ctx.eval("yield 1");
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("yield"));
+    }
+
+    #[test]
+    fn test_generator_with_return() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def gen_with_return():
+    yield 1
+    yield 2
+    return 42
+
+gen = gen_with_return()
+"#,
+        )
+        .unwrap();
+
+        // Verify generator is created
+        if let Some(Value::Generator(_)) = ctx.get("gen") {
+            // Success - generator created
+        } else {
+            panic!("Expected generator object");
+        }
+    }
+
+    #[test]
+    fn test_multiple_generators() {
+        let mut ctx = Context::new();
+        ctx.eval(
+            r#"
+def gen1():
+    yield 1
+    yield 2
+
+def gen2():
+    yield 3
+    yield 4
+
+g1 = gen1()
+g2 = gen2()
+"#,
+        )
+        .unwrap();
+
+        // Verify both generators are created independently
+        if let Some(Value::Generator(gen1_rc)) = ctx.get("g1") {
+            let gen1 = gen1_rc.borrow();
+            assert_eq!(gen1.function.name, "gen1");
+        } else {
+            panic!("Expected generator g1");
+        }
+
+        if let Some(Value::Generator(gen2_rc)) = ctx.get("g2") {
+            let gen2 = gen2_rc.borrow();
+            assert_eq!(gen2.function.name, "gen2");
+        } else {
+            panic!("Expected generator g2");
         }
     }
 }

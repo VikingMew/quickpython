@@ -98,6 +98,9 @@ fn serialize_instruction(buffer: &mut Vec<u8>, instruction: &Instruction) -> Res
                     .to_string(),
             );
         }
+        Instruction::Yield => {
+            return Err("'yield' instruction cannot be serialized yet".to_string());
+        }
         Instruction::GetGlobal(name) => {
             buffer.push(0x20);
             let bytes = name.as_bytes();

@@ -206,6 +206,7 @@ pub enum Value {
     Iterator(Rc<RefCell<IteratorState>>),
     Function(Function),
     Coroutine(Function, Vec<Value>), // (async function, captured args)
+    Generator(Rc<RefCell<GeneratorState>>), // Generator object
     AsyncSleep(f64),                 // Async sleep operation (seconds)
     Exception(ExceptionValue),
     Module(Rc<RefCell<Module>>),
@@ -245,6 +246,14 @@ impl std::fmt::Debug for Value {
             Value::Iterator(i) => write!(f, "Iterator({:?})", i),
             Value::Function(func) => write!(f, "Function({:?})", func),
             Value::Coroutine(func, _) => write!(f, "Coroutine({:?})", func.name),
+            Value::Generator(gen_rc) => {
+                let gen_state = gen_rc.borrow();
+                write!(
+                    f,
+                    "Generator({}, finished={})",
+                    gen_state.function.name, gen_state.finished
+                )
+            }
             Value::AsyncSleep(seconds) => write!(f, "AsyncSleep({})", seconds),
             Value::Exception(e) => write!(f, "Exception({:?})", e),
             Value::Module(m) => write!(f, "Module({:?})", m),
@@ -263,6 +272,17 @@ pub struct Function {
     pub params: Vec<String>,
     pub code: ByteCode,
     pub is_async: bool,
+    pub is_generator: bool,
+}
+
+/// Generator state for yield/resume
+#[derive(Debug, Clone)]
+pub struct GeneratorState {
+    pub function: Function,
+    pub locals: Vec<Value>,
+    pub ip: usize,
+    pub stack: Vec<Value>,
+    pub finished: bool,
 }
 
 impl Value {
@@ -344,6 +364,7 @@ impl Value {
             Value::Iterator(_) => true,
             Value::Function(_) => true,
             Value::Coroutine(_, _) => true,
+            Value::Generator(_) => true,
             Value::AsyncSleep(_) => true,
             Value::Exception(_) => true,
             Value::Module(_) => true,
@@ -389,6 +410,7 @@ impl PartialEq for Value {
             (Value::Iterator(a), Value::Iterator(b)) => Rc::ptr_eq(a, b),
             (Value::Function(a), Value::Function(b)) => a == b,
             (Value::Coroutine(f1, _), Value::Coroutine(f2, _)) => f1 == f2,
+            (Value::Generator(a), Value::Generator(b)) => Rc::ptr_eq(a, b),
             (Value::AsyncSleep(a), Value::AsyncSleep(b)) => a == b,
             (Value::Exception(a), Value::Exception(b)) => {
                 a.exception_type == b.exception_type && a.message == b.message
