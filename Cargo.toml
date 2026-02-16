@@ -1,13 +1,6 @@
-[workspace]
-members = [
-    ".",
-    "quickpython-llm",
-    "quickpython-demo",
-]
-
 [package]
 name = "quickpython"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 authors = ["VikingMew"]
 description = "A lightweight Python bytecode VM written in Rust"
@@ -16,16 +9,23 @@ repository = "https://github.com/VikingMew/quickpython"
 homepage = "https://github.com/VikingMew/quickpython"
 documentation = "https://github.com/VikingMew/quickpython"
 readme = "README.md"
-keywords = ["python", "vm", "bytecode", "interpreter", "scripting"]
-categories = ["parser-implementations", "embedded", "virtualization"]
+keywords = ["bytecode", "interpreter", "python", "scripting", "vm"]
+categories = ["embedded", "parser-implementations", "virtualization"]
 exclude = [
-    "examples/*",
-    "test/*",
-    "tasks/*",
-    "spec/*",
-    ".github/*",
-    "quickpython-demo/*",
-    "quickpython-llm/*",
+  ".github/*",
+  "examples/*",
+  "quickpython-demo/*",
+  "quickpython-llm/*",
+  "spec/*",
+  "tasks/*",
+  "test/*",
+]
+
+[workspace]
+members = [
+  ".",
+  "quickpython-demo",
+  "quickpython-llm",
 ]
 
 [lib]
@@ -33,9 +33,9 @@ name = "quickpython"
 path = "src/main.rs"
 
 [dependencies]
-rustpython-parser = "0.4.0"
 clap = { version = "4.5", features = ["derive"] }
+regex = "1.10"
+rustpython-parser = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-regex = "1.10"
 tokio = { version = "1", features = ["full"] }

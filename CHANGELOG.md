@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-02-16
+
+### Added
+
+#### Generators (Task 043)
+- **Generator functions** with `yield` statement
+- Generator execution engine with full instruction support
+- Lazy evaluation and state preservation
+- Support for `StoreLocal`, `LoadLocal`, `Return`, `Jump`, `JumpIfFalse` in generator context
+
+#### Control Flow (Task 041)
+- **`pass` statement** - explicit no-op placeholder
+
+#### Operators (Task 044)
+- **Identity operators** (`is`, `is not`) for object identity comparison
+
+#### Comprehensions (Task 045)
+- **Dictionary comprehensions** - `{k: v for k, v in items}`
+
+### Changed
+- Improved test coverage from 63.82% to 82.59% (Task 040)
+- CI now skips documentation-only changes
+
+### Documentation
+- Added tasks 041-045 documentation
+- Added generators specification
+- Simplified task documents
+- Updated implementation summaries
+
 ## [0.1.2] - 2026-02-15
 
 ### Added
