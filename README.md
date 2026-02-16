@@ -13,23 +13,12 @@
 
 > **Alpha** — This project is under active development. APIs may change, features may be incomplete, and bugs are expected. Contributions and feedback are welcome.
 
+See [CHANGELOG.md](CHANGELOG.md) for details.
 </div>
 
 ---
 
 QuickPython compiles Python source code to custom bytecode and executes it on a stack-based virtual machine. It focuses on being small, fast to start, and easy to extend — not on full CPython compatibility.
-
-## ✨ What's New in v0.1.1
-
-- **Async/await support** with Tokio integration — `async def`, `await`, `asyncio.sleep()`
-- **List comprehensions** — `[x*2 for x in items if x > 5]`
-- **F-string formatting** — `f"Hello {name}, result is {x + y}"`
-- **Enhanced operators** — augmented assignment (`+=`, `-=`), logical operators (`and`, `or`, `not`), membership (`in`)
-- **String methods** — `split()`, `strip()`, `startswith()`, `endswith()`, `lower()`, `upper()`, `replace()`, `join()`
-- **Advanced data structures** — tuple unpacking, slicing, `isinstance()`, type objects
-- **254 passing tests** (up from 128)
-
-See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Features
 
