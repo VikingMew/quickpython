@@ -3070,6 +3070,175 @@ impl VM {
                     *ip += 1;
                 }
             }
+            Instruction::GetItem => {
+                let index = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                match obj {
+                    Value::List(list) => {
+                        let idx = index.as_int().ok_or_else(|| {
+                            Value::error(ExceptionType::TypeError, "list indices must be integers")
+                        })?;
+                        let list_ref = list.borrow();
+                        let len = list_ref.items.len() as i32;
+                        let actual_idx = if idx < 0 { len + idx } else { idx };
+                        if actual_idx < 0 || actual_idx >= len {
+                            return Err(Value::error(
+                                ExceptionType::IndexError,
+                                "list index out of range",
+                            ));
+                        }
+                        self.stack.push(list_ref.items[actual_idx as usize].clone());
+                    }
+                    Value::Dict(dict) => {
+                        let dict_key = match index {
+                            Value::String(s) => DictKey::String(s),
+                            Value::Int(i) => DictKey::Int(i),
+                            _ => {
+                                return Err(Value::error(
+                                    ExceptionType::TypeError,
+                                    "unhashable type",
+                                ));
+                            }
+                        };
+                        let dict_ref = dict.borrow();
+                        let value = dict_ref
+                            .get(&dict_key)
+                            .ok_or_else(|| Value::error(ExceptionType::KeyError, "key not found"))?
+                            .clone();
+                        self.stack.push(value);
+                    }
+                    Value::Tuple(tuple) => {
+                        let idx = index.as_int().ok_or_else(|| {
+                            Value::error(ExceptionType::TypeError, "tuple indices must be integers")
+                        })?;
+                        let len = tuple.len() as i32;
+                        let actual_idx = if idx < 0 { len + idx } else { idx };
+                        if actual_idx < 0 || actual_idx >= len {
+                            return Err(Value::error(
+                                ExceptionType::IndexError,
+                                "tuple index out of range",
+                            ));
+                        }
+                        self.stack.push(tuple[actual_idx as usize].clone());
+                    }
+                    Value::String(s) => {
+                        let idx = index.as_int().ok_or_else(|| {
+                            Value::error(
+                                ExceptionType::TypeError,
+                                "string indices must be integers",
+                            )
+                        })?;
+                        let chars: Vec<char> = s.chars().collect();
+                        let len = chars.len() as i32;
+                        let actual_idx = if idx < 0 { len + idx } else { idx };
+                        if actual_idx < 0 || actual_idx >= len {
+                            return Err(Value::error(
+                                ExceptionType::IndexError,
+                                "string index out of range",
+                            ));
+                        }
+                        self.stack
+                            .push(Value::String(chars[actual_idx as usize].to_string()));
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "object is not subscriptable",
+                        ));
+                    }
+                }
+                *ip += 1;
+            }
+            Instruction::Len => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let result = match value {
+                    Value::String(s) => s.chars().count() as i32,
+                    Value::List(list) => list.borrow().items.len() as i32,
+                    Value::Dict(dict) => dict.borrow().len() as i32,
+                    Value::Tuple(tuple) => tuple.len() as i32,
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "object of this type has no len()",
+                        ));
+                    }
+                };
+                self.stack.push(Value::Int(result));
+                *ip += 1;
+            }
+            Instruction::BuildTuple(count) => {
+                let mut elements = Vec::new();
+                for _ in 0..*count {
+                    elements.push(self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?);
+                }
+                elements.reverse();
+                self.stack.push(Value::Tuple(Rc::new(elements)));
+                *ip += 1;
+            }
+            Instruction::BuildDict(count) => {
+                let mut dict = HashMap::new();
+                for _ in 0..*count {
+                    let value = self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?;
+                    let key = self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?;
+
+                    let dict_key = match key {
+                        Value::String(s) => DictKey::String(s),
+                        Value::Int(i) => DictKey::Int(i),
+                        _ => {
+                            return Err(Value::error(ExceptionType::TypeError, "unhashable type"));
+                        }
+                    };
+                    dict.insert(dict_key, value);
+                }
+                self.stack.push(Value::Dict(Rc::new(RefCell::new(dict))));
+                *ip += 1;
+            }
+            Instruction::Not => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                self.stack.push(Value::Bool(!value.is_truthy()));
+                *ip += 1;
+            }
+            Instruction::Negate => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match value {
+                    Value::Int(i) => Value::Int(-i),
+                    Value::Float(f) => Value::Float(-f),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "bad operand type for unary -: '{}'",
+                                Self::type_name(&value)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
             // For other instructions, we need to handle them in the main execute loop
             // This is a simplified version for generator execution
             _ => {

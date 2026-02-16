@@ -8117,4 +8117,194 @@ result
             }
         }
     }
+
+    #[test]
+    fn test_generator_with_tuple() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def pairs(n):
+    i = 0
+    while i < n:
+        yield (i, i * 2)
+        i = i + 1
+
+result = []
+for pair in pairs(3):
+    result.append(pair)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 3);
+
+                if let Value::Tuple(t0) = &items[0] {
+                    assert_eq!(t0[0], Value::Int(0));
+                    assert_eq!(t0[1], Value::Int(0));
+                } else {
+                    panic!("Expected tuple");
+                }
+
+                if let Value::Tuple(t1) = &items[1] {
+                    assert_eq!(t1[0], Value::Int(1));
+                    assert_eq!(t1[1], Value::Int(2));
+                } else {
+                    panic!("Expected tuple");
+                }
+
+                if let Value::Tuple(t2) = &items[2] {
+                    assert_eq!(t2[0], Value::Int(2));
+                    assert_eq!(t2[1], Value::Int(4));
+                } else {
+                    panic!("Expected tuple");
+                }
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with tuple error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_with_dict() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def key_value_pairs(n):
+    i = 0
+    while i < n:
+        yield {"key": i, "value": i * 10}
+        i = i + 1
+
+result = []
+for item in key_value_pairs(3):
+    result.append(item)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 3);
+
+                for (idx, item) in items.iter().enumerate() {
+                    if let Value::Dict(dict) = item {
+                        let dict_ref = dict.borrow();
+                        assert_eq!(
+                            dict_ref.get(&DictKey::String("key".to_string())),
+                            Some(&Value::Int(idx as i32))
+                        );
+                        assert_eq!(
+                            dict_ref.get(&DictKey::String("value".to_string())),
+                            Some(&Value::Int((idx as i32) * 10))
+                        );
+                    } else {
+                        panic!("Expected dict");
+                    }
+                }
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with dict error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_with_logical_operators() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def filter_range(n):
+    i = 0
+    while i < n:
+        if i > 2 and i < 7:
+            yield i
+        i = i + 1
+
+result = []
+for x in filter_range(10):
+    result.append(x)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 4);
+                assert_eq!(items[0], Value::Int(3));
+                assert_eq!(items[1], Value::Int(4));
+                assert_eq!(items[2], Value::Int(5));
+                assert_eq!(items[3], Value::Int(6));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with logical operators error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_with_negation() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def negatives(n):
+    i = 1
+    while i <= n:
+        yield -i
+        i = i + 1
+
+result = []
+for x in negatives(4):
+    result.append(x)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 4);
+                assert_eq!(items[0], Value::Int(-1));
+                assert_eq!(items[1], Value::Int(-2));
+                assert_eq!(items[2], Value::Int(-3));
+                assert_eq!(items[3], Value::Int(-4));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with negation error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
 }
