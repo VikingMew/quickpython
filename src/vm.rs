@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[derive(Clone)]
 struct Frame {
     locals: Vec<Value>,
     ip: usize,
@@ -1859,13 +1860,31 @@ impl VM {
                             *ip = *jump_target;
                         }
                     }
-                    Value::Generator(_gen_rc) => {
-                        // TODO: Full generator execution support
-                        // For now, generators are not fully supported in for loops
-                        return Err(Value::error(
-                            ExceptionType::RuntimeError,
-                            "Generator execution in for loops not yet fully implemented",
-                        ));
+                    Value::Generator(gen_rc) => {
+                        // Execute generator until next yield or return
+                        let mut generator = gen_rc.borrow_mut();
+
+                        if generator.finished {
+                            // Generator exhausted, jump to end of loop
+                            self.stack.pop(); // Remove generator from stack
+                            *ip = *jump_target;
+                        } else {
+                            // Execute generator code until yield or return
+                            let result = self.execute_generator_step(&mut generator, globals)?;
+
+                            match result {
+                                Some(value) => {
+                                    // Generator yielded a value
+                                    self.stack.push(value);
+                                    *ip += 1;
+                                }
+                                None => {
+                                    // Generator finished without yielding
+                                    self.stack.pop(); // Remove generator from stack
+                                    *ip = *jump_target;
+                                }
+                            }
+                        }
                     }
                     _ => {
                         return Err(Value::error(ExceptionType::TypeError, "Expected iterator"));
@@ -2479,6 +2498,281 @@ impl VM {
                 "join() argument must be a list",
             )),
         }
+    }
+
+    /// Execute one step of a generator until it yields or returns
+    /// Returns Some(value) if yielded, None if finished
+    fn execute_generator_step(
+        &mut self,
+        generator: &mut crate::value::GeneratorState,
+        globals: &mut HashMap<String, Value>,
+    ) -> Result<Option<Value>, Value> {
+        // Save current VM state
+        let saved_stack = self.stack.clone();
+        let saved_frames = self.frames.clone();
+
+        // Restore generator state
+        self.stack = generator.stack.clone();
+
+        // Create frame for generator execution
+        let gen_frame = Frame {
+            locals: generator.locals.clone(),
+            ip: generator.ip,
+            code: generator.function.code.clone(),
+            stack_base: 0,
+        };
+        self.frames = vec![gen_frame];
+
+        // Execute instructions until yield or return
+
+        loop {
+            if self.frames.is_empty() {
+                // Generator finished
+                generator.finished = true;
+                break;
+            }
+
+            let frame = self.frames.last_mut().unwrap();
+
+            if frame.ip >= frame.code.len() {
+                // Reached end of code
+                generator.finished = true;
+                break;
+            }
+
+            let instruction = &frame.code[frame.ip].clone();
+            let mut ip = frame.ip;
+
+            match instruction {
+                Instruction::Yield => {
+                    // Pop yielded value from stack
+                    let result = self.stack.pop();
+                    ip += 1; // Move past yield for next iteration
+
+                    // Save generator state
+                    generator.ip = ip;
+                    generator.stack = self.stack.clone();
+                    if !self.frames.is_empty() {
+                        generator.locals = self.frames[0].locals.clone();
+                    }
+
+                    // Restore VM state
+                    self.stack = saved_stack;
+                    self.frames = saved_frames;
+
+                    return Ok(result);
+                }
+                Instruction::Return => {
+                    // Generator finished
+                    generator.finished = true;
+
+                    // Restore VM state
+                    self.stack = saved_stack;
+                    self.frames = saved_frames;
+
+                    return Ok(None);
+                }
+                _ => {
+                    // Execute the instruction normally
+                    if let Err(e) = self.execute_single_instruction(instruction, &mut ip, globals) {
+                        // Restore VM state and propagate error
+                        self.stack = saved_stack;
+                        self.frames = saved_frames;
+                        return Err(e);
+                    }
+
+                    // Update frame IP
+                    if !self.frames.is_empty() {
+                        self.frames.last_mut().unwrap().ip = ip;
+                    }
+                }
+            }
+        }
+
+        // Generator finished without yielding
+        generator.finished = true;
+
+        // Restore VM state
+        self.stack = saved_stack;
+        self.frames = saved_frames;
+
+        Ok(None)
+    }
+
+    /// Execute a single instruction and update IP
+    fn execute_single_instruction(
+        &mut self,
+        instruction: &Instruction,
+        ip: &mut usize,
+        globals: &mut HashMap<String, Value>,
+    ) -> Result<(), Value> {
+        // This is a simplified version that handles most instructions
+        // For complex instructions that modify frames, we need special handling
+
+        match instruction {
+            Instruction::PushInt(i) => {
+                self.stack.push(Value::Int(*i));
+                *ip += 1;
+            }
+            Instruction::PushFloat(f) => {
+                self.stack.push(Value::Float(*f));
+                *ip += 1;
+            }
+            Instruction::PushBool(b) => {
+                self.stack.push(Value::Bool(*b));
+                *ip += 1;
+            }
+            Instruction::PushNone => {
+                self.stack.push(Value::None);
+                *ip += 1;
+            }
+            Instruction::PushString(s) => {
+                self.stack.push(Value::String(s.clone()));
+                *ip += 1;
+            }
+            Instruction::Pop => {
+                self.stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                *ip += 1;
+            }
+            Instruction::GetLocal(index) => {
+                if let Some(frame) = self.frames.last() {
+                    if *index < frame.locals.len() {
+                        self.stack.push(frame.locals[*index].clone());
+                        *ip += 1;
+                    } else {
+                        return Err(Value::error(
+                            ExceptionType::RuntimeError,
+                            format!("Local variable index {} out of bounds", index),
+                        ));
+                    }
+                } else {
+                    return Err(Value::error(ExceptionType::RuntimeError, "No active frame"));
+                }
+            }
+            Instruction::SetLocal(index) => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                if let Some(frame) = self.frames.last_mut() {
+                    if *index < frame.locals.len() {
+                        frame.locals[*index] = value;
+                        *ip += 1;
+                    } else {
+                        return Err(Value::error(
+                            ExceptionType::RuntimeError,
+                            format!("Local variable index {} out of bounds", index),
+                        ));
+                    }
+                } else {
+                    return Err(Value::error(ExceptionType::RuntimeError, "No active frame"));
+                }
+            }
+            Instruction::GetGlobal(name) => {
+                let value = globals.get(name).cloned().ok_or_else(|| {
+                    Value::error(
+                        ExceptionType::RuntimeError,
+                        format!("Undefined variable: {}", name),
+                    )
+                })?;
+                self.stack.push(value);
+                *ip += 1;
+            }
+            Instruction::SetGlobal(name) => {
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                globals.insert(name.clone(), value);
+                *ip += 1;
+            }
+            Instruction::Add => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Int(x + y),
+                    (Value::Float(x), Value::Float(y)) => Value::Float(x + y),
+                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 + y),
+                    (Value::Float(x), Value::Int(y)) => Value::Float(x + *y as f64),
+                    (Value::String(x), Value::String(y)) => Value::String(format!("{}{}", x, y)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "unsupported operand type(s) for +: '{}' and '{}'",
+                                Self::type_name(&a),
+                                Self::type_name(&b)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Lt => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Bool(x < y),
+                    (Value::Float(x), Value::Float(y)) => Value::Bool(x < y),
+                    (Value::Int(x), Value::Float(y)) => Value::Bool((*x as f64) < *y),
+                    (Value::Float(x), Value::Int(y)) => Value::Bool(*x < (*y as f64)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "unsupported operand types for <",
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Jump(target) => {
+                *ip = *target;
+            }
+            Instruction::JumpIfFalse(target) => {
+                let condition = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                if !condition.is_truthy() {
+                    *ip = *target;
+                } else {
+                    *ip += 1;
+                }
+            }
+            // For other instructions, we need to handle them in the main execute loop
+            // This is a simplified version for generator execution
+            _ => {
+                return Err(Value::error(
+                    ExceptionType::RuntimeError,
+                    format!(
+                        "Instruction {:?} not supported in generator execution yet",
+                        instruction
+                    ),
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     // Helper function to get type name of a value
