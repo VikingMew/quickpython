@@ -2719,6 +2719,159 @@ impl VM {
                 self.stack.push(result);
                 *ip += 1;
             }
+            Instruction::Sub => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Int(x - y),
+                    (Value::Float(x), Value::Float(y)) => Value::Float(x - y),
+                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 - y),
+                    (Value::Float(x), Value::Int(y)) => Value::Float(x - *y as f64),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "unsupported operand type(s) for -: '{}' and '{}'",
+                                Self::type_name(&a),
+                                Self::type_name(&b)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Mul => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Int(x * y),
+                    (Value::Float(x), Value::Float(y)) => Value::Float(x * y),
+                    (Value::Int(x), Value::Float(y)) => Value::Float(*x as f64 * y),
+                    (Value::Float(x), Value::Int(y)) => Value::Float(x * *y as f64),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "unsupported operand type(s) for *: '{}' and '{}'",
+                                Self::type_name(&a),
+                                Self::type_name(&b)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Div => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => {
+                        if *y == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "division by zero",
+                            ));
+                        }
+                        Value::Float(*x as f64 / *y as f64)
+                    }
+                    (Value::Float(x), Value::Float(y)) => {
+                        if *y == 0.0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float division by zero",
+                            ));
+                        }
+                        Value::Float(x / y)
+                    }
+                    (Value::Int(x), Value::Float(y)) => {
+                        if *y == 0.0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float division by zero",
+                            ));
+                        }
+                        Value::Float(*x as f64 / y)
+                    }
+                    (Value::Float(x), Value::Int(y)) => {
+                        if *y == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "float division by zero",
+                            ));
+                        }
+                        Value::Float(x / *y as f64)
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "unsupported operand type(s) for /: '{}' and '{}'",
+                                Self::type_name(&a),
+                                Self::type_name(&b)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Mod => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => {
+                        if *y == 0 {
+                            return Err(Value::error(
+                                ExceptionType::ZeroDivisionError,
+                                "integer division or modulo by zero",
+                            ));
+                        }
+                        Value::Int(x % y)
+                    }
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            format!(
+                                "unsupported operand type(s) for %: '{}' and '{}'",
+                                Self::type_name(&a),
+                                Self::type_name(&b)
+                            ),
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
             Instruction::Lt => {
                 let b = self
                     .stack
@@ -2743,6 +2896,164 @@ impl VM {
                 };
                 self.stack.push(result);
                 *ip += 1;
+            }
+            Instruction::Le => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Bool(x <= y),
+                    (Value::Float(x), Value::Float(y)) => Value::Bool(x <= y),
+                    (Value::Int(x), Value::Float(y)) => Value::Bool((*x as f64) <= *y),
+                    (Value::Float(x), Value::Int(y)) => Value::Bool(*x <= (*y as f64)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "unsupported operand types for <=",
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Gt => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Bool(x > y),
+                    (Value::Float(x), Value::Float(y)) => Value::Bool(x > y),
+                    (Value::Int(x), Value::Float(y)) => Value::Bool((*x as f64) > *y),
+                    (Value::Float(x), Value::Int(y)) => Value::Bool(*x > (*y as f64)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "unsupported operand types for >",
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Ge => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                let result = match (&a, &b) {
+                    (Value::Int(x), Value::Int(y)) => Value::Bool(x >= y),
+                    (Value::Float(x), Value::Float(y)) => Value::Bool(x >= y),
+                    (Value::Int(x), Value::Float(y)) => Value::Bool((*x as f64) >= *y),
+                    (Value::Float(x), Value::Int(y)) => Value::Bool(*x >= (*y as f64)),
+                    _ => {
+                        return Err(Value::error(
+                            ExceptionType::TypeError,
+                            "unsupported operand types for >=",
+                        ));
+                    }
+                };
+                self.stack.push(result);
+                *ip += 1;
+            }
+            Instruction::Eq => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                self.stack.push(Value::Bool(a == b));
+                *ip += 1;
+            }
+            Instruction::Ne => {
+                let b = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+                let a = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                self.stack.push(Value::Bool(a != b));
+                *ip += 1;
+            }
+            Instruction::BuildList(count) => {
+                let mut elements = Vec::new();
+                for _ in 0..*count {
+                    elements.push(self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?);
+                }
+                elements.reverse();
+                self.stack.push(Value::List(Rc::new(RefCell::new(
+                    crate::value::ListValue::with_items(elements),
+                ))));
+                *ip += 1;
+            }
+            Instruction::CallMethod(name, arg_count) => {
+                // Pop arguments
+                let mut args = Vec::new();
+                for _ in 0..*arg_count {
+                    args.push(self.stack.pop().ok_or_else(|| {
+                        Value::error(ExceptionType::RuntimeError, "Stack underflow")
+                    })?);
+                }
+                args.reverse();
+
+                // Pop object
+                let obj = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| Value::error(ExceptionType::RuntimeError, "Stack underflow"))?;
+
+                // Handle list.append specially
+                if name == "append" {
+                    if let Value::List(list) = obj {
+                        if args.len() != 1 {
+                            return Err(Value::error(
+                                ExceptionType::TypeError,
+                                "append() takes exactly one argument",
+                            ));
+                        }
+                        list.borrow_mut().items.push(args[0].clone());
+                        self.stack.push(Value::None);
+                        *ip += 1;
+                    } else {
+                        return Err(Value::error(
+                            ExceptionType::AttributeError,
+                            format!(
+                                "'{}' object has no attribute 'append'",
+                                Self::type_name(&obj)
+                            ),
+                        ));
+                    }
+                } else {
+                    return Err(Value::error(
+                        ExceptionType::RuntimeError,
+                        format!("Method '{}' not supported in generator execution yet", name),
+                    ));
+                }
             }
             Instruction::Jump(target) => {
                 *ip = *target;

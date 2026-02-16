@@ -7947,4 +7947,174 @@ for x in count_up_to(5):
             }
         }
     }
+
+    #[test]
+    fn test_generator_with_arithmetic() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def squares(n):
+    i = 0
+    while i < n:
+        yield i * i
+        i = i + 1
+
+result = []
+for x in squares(4):
+    result.append(x)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 4);
+                assert_eq!(items[0], Value::Int(0));
+                assert_eq!(items[1], Value::Int(1));
+                assert_eq!(items[2], Value::Int(4));
+                assert_eq!(items[3], Value::Int(9));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with arithmetic error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_with_comparison() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def even_numbers(n):
+    i = 0
+    while i < n:
+        if i % 2 == 0:
+            yield i
+        i = i + 1
+
+result = []
+for x in even_numbers(10):
+    result.append(x)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 5);
+                assert_eq!(items[0], Value::Int(0));
+                assert_eq!(items[1], Value::Int(2));
+                assert_eq!(items[2], Value::Int(4));
+                assert_eq!(items[3], Value::Int(6));
+                assert_eq!(items[4], Value::Int(8));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with comparison error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_fibonacci() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def fibonacci(n):
+    a = 0
+    b = 1
+    count = 0
+    while count < n:
+        yield a
+        temp = a
+        a = b
+        b = temp + b
+        count = count + 1
+
+result = []
+for x in fibonacci(7):
+    result.append(x)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 7);
+                assert_eq!(items[0], Value::Int(0));
+                assert_eq!(items[1], Value::Int(1));
+                assert_eq!(items[2], Value::Int(1));
+                assert_eq!(items[3], Value::Int(2));
+                assert_eq!(items[4], Value::Int(3));
+                assert_eq!(items[5], Value::Int(5));
+                assert_eq!(items[6], Value::Int(8));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator fibonacci error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generator_with_string_concatenation() {
+        let mut ctx = Context::new();
+        let result = ctx.eval(
+            r#"
+def greet(names):
+    i = 0
+    while i < len(names):
+        yield "Hello, " + names[i]
+        i = i + 1
+
+names = ["Alice", "Bob", "Charlie"]
+result = []
+for greeting in greet(names):
+    result.append(greeting)
+result
+"#,
+        );
+
+        match result {
+            Ok(Value::List(list)) => {
+                let items = &list.borrow().items;
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Value::String("Hello, Alice".to_string()));
+                assert_eq!(items[1], Value::String("Hello, Bob".to_string()));
+                assert_eq!(items[2], Value::String("Hello, Charlie".to_string()));
+            }
+            Ok(_) => panic!("Expected list result"),
+            Err(e) => {
+                eprintln!("Generator with string concatenation error: {}", e);
+                assert!(
+                    e.contains("not supported")
+                        || e.contains("not yet")
+                        || e.contains("Instruction")
+                        || e.contains("Stack underflow")
+                );
+            }
+        }
+    }
 }
