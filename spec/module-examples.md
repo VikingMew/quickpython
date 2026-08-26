@@ -1,5 +1,9 @@
 # 模块实现示例
 
+> **Status: example reference; non-contractual.** Examples may illustrate
+> unsupported combinations. Verify module behavior against
+> `docs/limitations/` and the checked-in tests.
+
 本文档提供三个具体的模块实现示例，展示 QuickPython 支持的三种模块类型。
 
 ## 1. JSON 模块（内置模块 - 使用 serde）

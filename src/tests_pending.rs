@@ -1,6 +1,8 @@
-// 待实现功能的测试
-// 这些测试目前会失败，因为相关功能尚未实现
-// 当功能实现后，这些测试应该能通过
+// Tests for known compatibility gaps.
+//
+// Every ignored test in this module is tracked, with a rationale, in
+// docs/ignored-tests.json. Passing tests should be moved back into the regular
+// suite when they validate implemented behavior rather than a generic error.
 
 #[cfg(test)]
 mod tests_pending {
@@ -11,7 +13,6 @@ mod tests_pending {
     // ============================================
 
     #[test]
-    #[ignore]
     fn test_is_operator() {
         let mut ctx = Context::new();
         let result = ctx
@@ -26,7 +27,6 @@ x is None
     }
 
     #[test]
-    #[ignore]
     fn test_is_not_operator() {
         let mut ctx = Context::new();
         let result = ctx
@@ -41,7 +41,6 @@ x is not None
     }
 
     #[test]
-    #[ignore]
     fn test_is_identity_check() {
         let mut ctx = Context::new();
         let result = ctx
@@ -230,7 +229,6 @@ len(x)
     // ============================================
 
     #[test]
-    #[ignore]
     fn test_json_escape_sequences() {
         let mut ctx = Context::new();
         let result = ctx
@@ -238,32 +236,7 @@ len(x)
                 r#"
 import json
 data = json.loads('{"text": "hello\\nworld\\ttab"}')
-"\\n" in data["text"] and "\\t" in data["text"]
-        "#,
-            )
-            .unwrap();
-        assert_eq!(result.as_bool(), Some(true));
-    }
-
-    // ============================================
-    // os.remove 实际文件操作 (需要文件 I/O)
-    // ============================================
-
-    #[test]
-    #[ignore]
-    fn test_os_remove_file() {
-        let mut ctx = Context::new();
-        let result = ctx
-            .eval(
-                r#"
-import os
-# Create a test file (需要 open() 和 write())
-# f = open("test_remove.txt", "w")
-# f.write("test")
-# f.close()
-# os.remove("test_remove.txt")
-# not os.path.exists("test_remove.txt")
-True  # Placeholder
+data["text"] == "hello\nworld\ttab"
         "#,
             )
             .unwrap();
@@ -446,7 +419,6 @@ len(result)
     // ============================================
 
     #[test]
-    #[ignore]
     fn test_dict_comprehension() {
         let mut ctx = Context::new();
         let result = ctx
@@ -676,7 +648,6 @@ del x
     // ============================================
 
     #[test]
-    #[ignore]
     fn test_pass_statement() {
         let mut ctx = Context::new();
         let result = ctx

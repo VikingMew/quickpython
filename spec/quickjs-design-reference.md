@@ -1,5 +1,9 @@
 # QuickJS 设计借鉴分析
 
+> **Status: external design reference.** NaN boxing, atoms, compact bytecode,
+> and other QuickJS techniques below are research material, not implemented
+> QuickPython behavior.
+
 基于 QuickJS 头文件的深入分析，以下是 QuickPython 可以直接借鉴的核心设计。
 
 ## 1. NaN Boxing 实现 ⭐⭐⭐⭐⭐

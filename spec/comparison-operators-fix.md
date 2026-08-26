@@ -1,5 +1,9 @@
 # 比较运算符类型支持规范
 
+> **Status: historical implementation note.** This records an earlier change;
+> it is not a maintained compatibility contract. Current behavior is defined by
+> code, tests, and `docs/limitations/`.
+
 ## 概述
 
 定义比较运算符（==, !=, <, >, <=, >=）对不同数据类型的支持规则。

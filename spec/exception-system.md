@@ -1,5 +1,9 @@
 # 异常系统设计
 
+> **Status: historical implementation note.** This document may contain stale
+> design and rollout claims. Current behavior is defined by `src/value.rs`,
+> `src/vm.rs`, tests, and `docs/limitations/`.
+
 ## 概述
 
 QuickPython 的异常系统设计，支持基本的异常抛出、捕获和传播机制。

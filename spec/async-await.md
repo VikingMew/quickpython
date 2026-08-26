@@ -1,5 +1,10 @@
 # Async/Await Specification
 
+> **Status: proposal; non-current.** QuickPython accepts async syntax today, but
+> the scheduler and host-future design below are not implemented. Current
+> execution is documented in `spec/architecture.md` and
+> `docs/limitations/asyncio.md`.
+
 ## Overview
 
 QuickPython 支持 Python 的 async/await 语法，用于异步编程。本规格定义了协程（coroutine）、异步函数和事件循环的实现。

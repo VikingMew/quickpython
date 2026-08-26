@@ -1,5 +1,8 @@
 # QuickJS 字节码借鉴分析
 
+> **Status: external design reference.** This analyzes QuickJS; it does not
+> describe QuickPython's current value or bytecode representation.
+
 ## QuickJS 字节码特点
 
 QuickJS 使用了非常紧凑和高效的字节码设计，以下是可以借鉴的部分：

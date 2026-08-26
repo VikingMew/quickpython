@@ -1,5 +1,9 @@
 # QuickPython 文件格式
 
+> **Status: proposal; non-current.** The constant/string/function-table layout
+> below is not implemented. The current partial format is documented in
+> `docs/limitations/serialization.md` and `src/serializer.rs`.
+
 ## 文件扩展名
 
 ### `.py` - QuickPython 源码文件

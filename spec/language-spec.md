@@ -1,5 +1,9 @@
 # QuickPython 语言规格
 
+> **Status: historical checklist; non-current.** This checklist is stale and
+> must not be read as the supported-language contract. Use the regular tests and
+> `docs/limitations/` for current behavior.
+
 ## 当前实现状态
 
 ### ✅ 已实现 (Phase 1 - MVP)

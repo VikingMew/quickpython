@@ -1,5 +1,9 @@
 # QuickPython API 设计
 
+> **Status: proposal; non-current.** The API sketches below are aspirational and
+> do not describe the checked-in public API. See `src/context.rs`,
+> `src/value.rs`, and the extension limitations for current behavior.
+
 ## Rust 集成 API
 
 ### 核心 API 概览

@@ -1,5 +1,9 @@
 # 模块导入系统规范
 
+> **Status: historical implementation note.** The current loader supports fixed
+> built-ins and registered extension modules only; broader designs below are not
+> a compatibility promise.
+
 ## 概述
 
 定义 QuickPython 的模块导入机制，支持三种类型的模块：

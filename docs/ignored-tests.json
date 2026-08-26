@@ -1,0 +1,212 @@
+{
+  "tests": [
+    {
+      "name": "tests_pending::tests_pending::test_re_compile_match",
+      "rationale": "Compiled regex values do not expose a match method. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_compile_search",
+      "rationale": "Compiled regex values do not expose a search method. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_compile_findall",
+      "rationale": "Compiled regex values do not expose a findall method. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_finditer",
+      "rationale": "The re module does not provide finditer. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_escape",
+      "rationale": "The re module does not provide escape. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_sub_with_count",
+      "rationale": "re.sub ignores CPython's count argument and replaces every match. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_re_split_with_limit",
+      "rationale": "re.split ignores CPython's maxsplit argument. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_tuple_len",
+      "rationale": "len does not accept tuple values. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_empty_tuple_len",
+      "rationale": "len does not accept empty tuple values. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_dir_builtin",
+      "rationale": "The dir built-in is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_hasattr_builtin",
+      "rationale": "The hasattr built-in is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_open_read_file",
+      "rationale": "The open built-in and file object protocol are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_open_write_file",
+      "rationale": "The open built-in and writable file objects are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_with_statement",
+      "rationale": "With statements and context managers are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_class_definition",
+      "rationale": "Class definitions and user objects are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_lambda_expression",
+      "rationale": "Lambda expressions are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_generator_expression",
+      "rationale": "Generator expressions are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_set_operations",
+      "rationale": "Set literals and set values are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_varargs",
+      "rationale": "Variadic function parameters and calls are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_decorator",
+      "rationale": "Decorator execution depends on unsupported variadic calls. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_generator_function",
+      "rationale": "This generator loop still reaches a VM stack-underflow path. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_starred_unpacking",
+      "rationale": "Starred assignment targets are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_global_keyword",
+      "rationale": "Global declarations are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_nonlocal_keyword",
+      "rationale": "Nonlocal declarations and closure rebinding are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_assert_statement",
+      "rationale": "Assert statements are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_assert_failure",
+      "rationale": "This currently passes only because unsupported assert compilation returns a generic error; it must remain ignored until it verifies assertion semantics. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_del_statement",
+      "rationale": "Del statements are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_ternary_operator",
+      "rationale": "Conditional expressions are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_walrus_operator",
+      "rationale": "Assignment expressions are not compiled. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_any_function",
+      "rationale": "The any built-in is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_all_function",
+      "rationale": "The all built-in is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_sorted_function",
+      "rationale": "The sorted built-in is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_sorted_reverse",
+      "rationale": "The sorted built-in and keyword arguments are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_reversed_function",
+      "rationale": "The reversed and list constructor built-ins are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_map_function",
+      "rationale": "The map and list constructor built-ins are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_filter_function",
+      "rationale": "The filter and list constructor built-ins are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_zip_function",
+      "rationale": "The zip and list constructor built-ins are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_zip_unequal_length",
+      "rationale": "The zip and list constructor built-ins are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_list_count",
+      "rationale": "List values do not expose count. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_list_reverse",
+      "rationale": "List values do not expose reverse. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_list_sort",
+      "rationale": "List values do not expose sort. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_list_sort_reverse",
+      "rationale": "List sort and keyword arguments are not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_list_multiplication",
+      "rationale": "List repetition with multiplication is not implemented. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_dict_values",
+      "rationale": "Dictionary values do not expose values. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_dict_items",
+      "rationale": "Dictionary values do not expose items. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_dict_pop_with_default",
+      "rationale": "Dictionary values do not expose pop or its default behavior. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_nested_list_comprehension",
+      "rationale": "Nested list comprehensions are explicitly rejected by the compiler. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_string_count",
+      "rationale": "String values do not expose count. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_string_isdigit",
+      "rationale": "String values do not expose isdigit. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_string_isalpha",
+      "rationale": "String values do not expose isalpha. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_string_isalnum",
+      "rationale": "String values do not expose isalnum. QPY-76."
+    },
+    {
+      "name": "tests_pending::tests_pending::test_string_multiplication",
+      "rationale": "String repetition with multiplication is not implemented. QPY-76."
+    }
+  ]
+}

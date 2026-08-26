@@ -1,5 +1,8 @@
 # QuickPython CLI 工具设计
 
+> **Status: proposal; non-current.** Only the commands implemented in
+> `src/main.rs` are current; unsupported examples below remain design ideas.
+
 ## 命令行工具：`quickpython`
 
 简洁的命令行工具，用于编译和运行 QuickPython 脚本。

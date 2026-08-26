@@ -1,5 +1,9 @@
 # Generators Specification
 
+> **Status: historical implementation note.** Generator support has evolved
+> since this plan was written; code, tests, and the limitations registry are
+> authoritative for current behavior.
+
 ## Overview
 
 Generators are functions that can pause execution and resume later, yielding values one at a time. They provide a memory-efficient way to create iterators.

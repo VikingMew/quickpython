@@ -20,14 +20,16 @@ See [CHANGELOG.md](CHANGELOG.md) for details.
 
 QuickPython compiles Python source code to custom bytecode and executes it on a stack-based virtual machine. It focuses on being small, fast to start, and easy to extend — not on full CPython compatibility.
 
+See the maintained [CPython compatibility and limitations registry](docs/limitations/README.md) before relying on QuickPython for an existing Python program.
+
 ## Features
 
 - **Bytecode compiler & VM** — compiles Python to custom bytecode, executes on a stack-based VM
 - **Core Python subset** — variables, functions, control flow, exceptions, lists, dicts, strings, floats
-- **Async/await** — full async/await syntax with Tokio runtime integration
+- **Async/await syntax** — coroutine execution is currently synchronous and sequential
 - **Built-in modules** — `json`, `os`, `re`, `asyncio`
 - **Extension system** — register Rust-native modules as Python imports
-- **Bytecode serialization** — compile to `.pyq` files for faster loading
+- **Limited bytecode serialization** — `.pyq` supports only the instruction families listed in the limitations registry
 - **Iterator safety** — detects list modification during iteration
 
 ## Getting Started

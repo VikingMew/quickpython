@@ -3,20 +3,8 @@ name: CI
 on:
   push:
     branches: [master]
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - ".gitignore"
-      - "spec/**"
-      - "tasks/**"
   pull_request:
     branches: [master]
-    paths-ignore:
-      - "**.md"
-      - "LICENSE"
-      - ".gitignore"
-      - "spec/**"
-      - "tasks/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -32,13 +20,57 @@ jobs:
       - run: cargo check --workspace
 
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
+
+  docs-parity:
+    name: Documentation parity
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check implementation/documentation parity
+        run: python scripts/check_docs_parity.py --base "origin/$GITHUB_BASE_REF" --no-worktree
+
+  ignored-tests:
+    name: Ignored-test registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: python scripts/check_ignored_tests.py
+
+  coverage:
+    name: Line coverage (75% minimum)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v2
+      - name: Measure workspace line coverage
+        run: |
+          minimum="$(tr -d '[:space:]' < .github/coverage-threshold.txt)"
+          cargo llvm-cov --workspace --summary-only --fail-under-lines "$minimum" | tee coverage-summary.txt
+      - name: Upload coverage summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage-summary.txt
+          if-no-files-found: warn
 
   test-python-core:
     name: Python integration tests (core)
