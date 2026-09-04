@@ -1,0 +1,7 @@
+import json
+DATA = __DATA__
+OBJ = json.loads(DATA)
+N = 200000
+for i in range(N):
+    result = json.dumps(OBJ)
+print(len(result))

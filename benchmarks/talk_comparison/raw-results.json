@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "os_arch": "Linux-7.0.11-orbstack-00354-gde2ab3f9e944-aarch64-with-glibc2.41",
+    "cpu": "unavailable",
+    "quickpython_commit": "a8168c3432111fd341c581ffacb798351054650f",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "cpython": "Python 3.11.16"
+  },
+  "commands": [
+    "cargo build --release",
+    "target/release/quickpython run <generated-or-committed-workload.py>",
+    "python3 <generated-or-committed-workload.py>"
+  ],
+  "measurement": {
+    "non_cold_runs": 3,
+    "cold_runs": 20,
+    "timeout_seconds": 300.0,
+    "clock": "time.perf_counter_ns"
+  },
+  "results": {
+    "quickpython": {
+      "cold_start": {
+        "status": "success",
+        "samples_seconds": [
+          0.002484589,
+          0.000816751,
+          0.002415254,
+          0.000524543,
+          0.002312463,
+          0.002449422,
+          0.002501796,
+          0.000497917,
+          0.002567713,
+          0.00213592,
+          0.001992963,
+          0.002017962,
+          0.000503543,
+          0.002374129,
+          0.002101588,
+          0.000490793,
+          0.002319255,
+          0.002184629,
+          0.000510917,
+          0.002370921
+        ],
+        "min_ms": 0.490793,
+        "avg_ms": 1.7786534,
+        "checksum": "2"
+      },
+      "json_loads": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          3.180023342,
+          3.335013011,
+          3.26884951
+        ],
+        "min_us_per_iter": 15.90011671,
+        "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
+      },
+      "json_dumps": {
+        "status": "failed",
+        "iterations": 200000,
+        "stage": "runtime",
+        "category": "semantic difference",
+        "error": "expected stdout '1815', got '1685'",
+        "samples": [
+          {
+            "elapsed_seconds": 1.184112877,
+            "returncode": 0,
+            "stdout": "1685\n",
+            "stderr": "",
+            "timed_out": false
+          },
+          {
+            "elapsed_seconds": 1.216834148,
+            "returncode": 0,
+            "stdout": "1685\n",
+            "stderr": "",
+            "timed_out": false
+          },
+          {
+            "elapsed_seconds": 1.24416445,
+            "returncode": 0,
+            "stdout": "1685\n",
+            "stderr": "",
+            "timed_out": false
+          }
+        ]
+      },
+      "compute_loop": {
+        "status": "success",
+        "iterations": 20000,
+        "samples_seconds": [
+          1.311903371,
+          1.300991475,
+          1.202045287
+        ],
+        "min_us_per_iter": 60.10226435,
+        "checksum": "2646700"
+      },
+      "string_join": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          0.104971033,
+          0.102914071,
+          0.103065405
+        ],
+        "min_us_per_iter": 0.514570355,
+        "checksum": "alpha,beta,gamma,delta"
+      },
+      "dict_ops": {
+        "status": "success",
+        "iterations": 50000,
+        "samples_seconds": [
+          0.840918225,
+          0.82496832,
+          0.883600098
+        ],
+        "min_us_per_iter": 16.4993664,
+        "checksum": "2401"
+      }
+    },
+    "cpython": {
+      "cold_start": {
+        "status": "success",
+        "samples_seconds": [
+          0.009372643,
+          0.007881515,
+          0.007195638,
+          0.006868554,
+          0.006970639,
+          0.006985347,
+          0.007123222,
+          0.006893013,
+          0.006987305,
+          0.006018803,
+          0.006011012,
+          0.008965017,
+          0.005422052,
+          0.006649429,
+          0.007071013,
+          0.006883305,
+          0.005946678,
+          0.007103806,
+          0.006899805,
+          0.006989389
+        ],
+        "min_ms": 5.422052,
+        "avg_ms": 7.011909250000001,
+        "checksum": "2"
+      },
+      "json_loads": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          1.208114381,
+          1.169858476,
+          1.25310555
+        ],
+        "min_us_per_iter": 5.8492923800000005,
+        "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
+      },
+      "json_dumps": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          1.721984775,
+          1.671889139,
+          1.695675017
+        ],
+        "min_us_per_iter": 8.359445695,
+        "checksum": "1815"
+      },
+      "compute_loop": {
+        "status": "success",
+        "iterations": 20000,
+        "samples_seconds": [
+          0.152286289,
+          0.176022168,
+          0.21998496
+        ],
+        "min_us_per_iter": 7.614314449999999,
+        "checksum": "2646700"
+      },
+      "string_join": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          0.021954375,
+          0.020200205,
+          0.02095654
+        ],
+        "min_us_per_iter": 0.101001025,
+        "checksum": "alpha,beta,gamma,delta"
+      },
+      "dict_ops": {
+        "status": "success",
+        "iterations": 50000,
+        "samples_seconds": [
+          0.125769906,
+          0.111035836,
+          0.110017335
+        ],
+        "min_us_per_iter": 2.2003467,
+        "checksum": "2401"
+      }
+    }
+  }
+}
