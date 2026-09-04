@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "environment": {
-    "os_arch": "Linux-7.0.11-orbstack-00354-gde2ab3f9e944-aarch64-with-glibc2.41",
-    "cpu": "unavailable",
-    "quickpython_commit": "a8168c3432111fd341c581ffacb798351054650f",
-    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
-    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
-    "cpython": "Python 3.11.16"
+    "os_arch": "macOS-26.5.2-arm64-arm-64bit",
+    "cpu": "arm",
+    "quickpython_commit": "f85a4a7b2da2bbde2347b7303484f48f7463ca82",
+    "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+    "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+    "cpython": "Python 3.11.5"
   },
   "commands": [
     "cargo build --release",
@@ -24,103 +24,84 @@
       "cold_start": {
         "status": "success",
         "samples_seconds": [
-          0.002484589,
-          0.000816751,
-          0.002415254,
-          0.000524543,
-          0.002312463,
-          0.002449422,
-          0.002501796,
-          0.000497917,
-          0.002567713,
-          0.00213592,
-          0.001992963,
-          0.002017962,
-          0.000503543,
-          0.002374129,
-          0.002101588,
-          0.000490793,
-          0.002319255,
-          0.002184629,
-          0.000510917,
-          0.002370921
+          0.012498875,
+          0.002607167,
+          0.002566417,
+          0.002599833,
+          0.002549292,
+          0.002597833,
+          0.002472875,
+          0.002515667,
+          0.002514625,
+          0.0025825,
+          0.00257575,
+          0.002605,
+          0.002486542,
+          0.002573667,
+          0.002482375,
+          0.002526917,
+          0.002539542,
+          0.002602042,
+          0.002668583,
+          0.002554667
         ],
-        "min_ms": 0.490793,
-        "avg_ms": 1.7786534,
+        "min_ms": 2.4728749999999997,
+        "avg_ms": 3.05600845,
         "checksum": "2"
       },
       "json_loads": {
         "status": "success",
         "iterations": 200000,
         "samples_seconds": [
-          3.180023342,
-          3.335013011,
-          3.26884951
+          2.572354208,
+          2.638979375,
+          2.621681167
         ],
-        "min_us_per_iter": 15.90011671,
+        "min_us_per_iter": 12.86177104,
         "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
       },
       "json_dumps": {
-        "status": "failed",
+        "status": "success",
         "iterations": 200000,
-        "stage": "runtime",
-        "category": "semantic difference",
-        "error": "expected stdout '1815', got '1685'",
-        "samples": [
-          {
-            "elapsed_seconds": 1.184112877,
-            "returncode": 0,
-            "stdout": "1685\n",
-            "stderr": "",
-            "timed_out": false
-          },
-          {
-            "elapsed_seconds": 1.216834148,
-            "returncode": 0,
-            "stdout": "1685\n",
-            "stderr": "",
-            "timed_out": false
-          },
-          {
-            "elapsed_seconds": 1.24416445,
-            "returncode": 0,
-            "stdout": "1685\n",
-            "stderr": "",
-            "timed_out": false
-          }
-        ]
+        "samples_seconds": [
+          2.238918625,
+          2.206061167,
+          2.2627995
+        ],
+        "min_us_per_iter": 11.030305835,
+        "checksum": "1815"
       },
       "compute_loop": {
         "status": "success",
         "iterations": 20000,
         "samples_seconds": [
-          1.311903371,
-          1.300991475,
-          1.202045287
+          1.268549458,
+          1.223684,
+          1.215903791
         ],
-        "min_us_per_iter": 60.10226435,
+        "min_us_per_iter": 60.795189549999996,
         "checksum": "2646700"
       },
       "string_join": {
         "status": "success",
         "iterations": 200000,
         "samples_seconds": [
-          0.104971033,
-          0.102914071,
-          0.103065405
+          0.139417958,
+          0.137220167,
+          0.137904209
         ],
-        "min_us_per_iter": 0.514570355,
+        "min_us_per_iter": 0.6861008350000001,
         "checksum": "alpha,beta,gamma,delta"
       },
       "dict_ops": {
         "status": "success",
         "iterations": 50000,
         "samples_seconds": [
-          0.840918225,
-          0.82496832,
-          0.883600098
+          0.877843458,
+          0.880206291,
+          0.877406666
         ],
-        "min_us_per_iter": 16.4993664,
+        "min_us_per_iter": 17.548133319999998,
         "checksum": "2401"
       }
     },
@@ -128,84 +109,84 @@
       "cold_start": {
         "status": "success",
         "samples_seconds": [
-          0.009372643,
-          0.007881515,
-          0.007195638,
-          0.006868554,
-          0.006970639,
-          0.006985347,
-          0.007123222,
-          0.006893013,
-          0.006987305,
-          0.006018803,
-          0.006011012,
-          0.008965017,
-          0.005422052,
-          0.006649429,
-          0.007071013,
-          0.006883305,
-          0.005946678,
-          0.007103806,
-          0.006899805,
-          0.006989389
+          0.023664417,
+          0.01521875,
+          0.015048584,
+          0.014894042,
+          0.014831125,
+          0.014798875,
+          0.014810375,
+          0.01476875,
+          0.014802667,
+          0.014750625,
+          0.014787417,
+          0.014758417,
+          0.01477525,
+          0.014693291,
+          0.014821334,
+          0.014667541,
+          0.015019042,
+          0.014825875,
+          0.014936291,
+          0.014815375
         ],
-        "min_ms": 5.422052,
-        "avg_ms": 7.011909250000001,
+        "min_ms": 14.667541,
+        "avg_ms": 15.284402150000002,
         "checksum": "2"
       },
       "json_loads": {
         "status": "success",
         "iterations": 200000,
         "samples_seconds": [
-          1.208114381,
-          1.169858476,
-          1.25310555
+          1.294343708,
+          1.341906541,
+          1.302484459
         ],
-        "min_us_per_iter": 5.8492923800000005,
+        "min_us_per_iter": 6.4717185399999995,
         "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
       },
       "json_dumps": {
         "status": "success",
         "iterations": 200000,
         "samples_seconds": [
-          1.721984775,
-          1.671889139,
-          1.695675017
+          2.042702916,
+          2.007839292,
+          1.996491167
         ],
-        "min_us_per_iter": 8.359445695,
+        "min_us_per_iter": 9.982455835000001,
         "checksum": "1815"
       },
       "compute_loop": {
         "status": "success",
         "iterations": 20000,
         "samples_seconds": [
-          0.152286289,
-          0.176022168,
-          0.21998496
+          0.16883475,
+          0.169000625,
+          0.173626625
         ],
-        "min_us_per_iter": 7.614314449999999,
+        "min_us_per_iter": 8.4417375,
         "checksum": "2646700"
       },
       "string_join": {
         "status": "success",
         "iterations": 200000,
         "samples_seconds": [
-          0.021954375,
-          0.020200205,
-          0.02095654
+          0.031061958,
+          0.031008875,
+          0.030955959
         ],
-        "min_us_per_iter": 0.101001025,
+        "min_us_per_iter": 0.15477979500000003,
         "checksum": "alpha,beta,gamma,delta"
       },
       "dict_ops": {
         "status": "success",
         "iterations": 50000,
         "samples_seconds": [
-          0.125769906,
-          0.111035836,
-          0.110017335
+          0.166562875,
+          0.127800791,
+          0.164645542
         ],
-        "min_us_per_iter": 2.2003467,
+        "min_us_per_iter": 2.55601582,
         "checksum": "2401"
       }
     }
