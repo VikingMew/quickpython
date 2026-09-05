@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "os_arch": "macOS-26.5.2-arm64-arm-64bit",
+    "cpu": "arm",
+    "cpython": "Python 3.11.5",
+    "rustpython": "Python 3.14.0alpha (default, Jan  1 1970, 08:00:00) "
+  },
+  "commands": [
+    "rustpython <generated-or-committed-workload.py>",
+    "python3 <generated-or-committed-workload.py>"
+  ],
+  "measurement": {
+    "non_cold_runs": 3,
+    "cold_runs": 20,
+    "clock": "time.perf_counter_ns"
+  },
+  "results": {
+    "rustpython": {
+      "cold_start": {
+        "status": "success",
+        "samples_seconds": [
+          0.027803417,
+          0.027321208,
+          0.026954834,
+          0.027002875,
+          0.027092625,
+          0.026700958,
+          0.026864417,
+          0.02688375,
+          0.027162042,
+          0.026802417,
+          0.027073791,
+          0.026630084,
+          0.027126125,
+          0.026758583,
+          0.026641292,
+          0.026658875,
+          0.026895333,
+          0.026861333,
+          0.026930958,
+          0.027051833
+        ],
+        "min_ms": 26.630083999999997,
+        "avg_ms": 26.9608375,
+        "checksum": "2"
+      },
+      "json_loads": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          4.86852625,
+          4.843620209,
+          4.910362583
+        ],
+        "min_us_per_iter": 24.218101044999997,
+        "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
+      },
+      "json_dumps": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          76.295990958,
+          76.509547,
+          82.053225334
+        ],
+        "min_us_per_iter": 381.47995479,
+        "checksum": "1815"
+      },
+      "compute_loop": {
+        "status": "success",
+        "iterations": 20000,
+        "samples_seconds": [
+          0.800028916,
+          0.702211292,
+          0.727948667
+        ],
+        "min_us_per_iter": 35.110564600000004,
+        "checksum": "2646700"
+      },
+      "string_join": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          0.263311042,
+          0.2573505,
+          0.252492292
+        ],
+        "min_us_per_iter": 1.2624614600000001,
+        "checksum": "alpha,beta,gamma,delta"
+      },
+      "dict_ops": {
+        "status": "success",
+        "iterations": 50000,
+        "samples_seconds": [
+          0.503289208,
+          0.601465291,
+          0.676286
+        ],
+        "min_us_per_iter": 10.06578416,
+        "checksum": "2401"
+      }
+    },
+    "cpython": {
+      "cold_start": {
+        "status": "success",
+        "samples_seconds": [
+          0.04725925,
+          0.017731041,
+          0.017739458,
+          0.017062209,
+          0.017192583,
+          0.032748208,
+          0.029549042,
+          0.021331083,
+          0.017635542,
+          0.017280833,
+          0.016204584,
+          0.016669,
+          0.018211625,
+          0.019640875,
+          0.027069583,
+          0.025967417,
+          0.032229792,
+          0.021241167,
+          0.017041375,
+          0.017012958
+        ],
+        "min_ms": 16.204584,
+        "avg_ms": 22.34088125,
+        "checksum": "2"
+      },
+      "json_loads": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          2.037097417,
+          2.497246833,
+          1.982058209
+        ],
+        "min_us_per_iter": 9.910291045000001,
+        "checksum": "d50887ca-a6ce-4e59-b89f-14f0b5d03b03"
+      },
+      "json_dumps": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          2.060468625,
+          2.118865958,
+          2.257382833
+        ],
+        "min_us_per_iter": 10.302343125,
+        "checksum": "1815"
+      },
+      "compute_loop": {
+        "status": "success",
+        "iterations": 20000,
+        "samples_seconds": [
+          0.217076542,
+          0.19610825,
+          0.206840458
+        ],
+        "min_us_per_iter": 9.8054125,
+        "checksum": "2646700"
+      },
+      "string_join": {
+        "status": "success",
+        "iterations": 200000,
+        "samples_seconds": [
+          0.035210459,
+          0.034904709,
+          0.033588459
+        ],
+        "min_us_per_iter": 0.16794229500000002,
+        "checksum": "alpha,beta,gamma,delta"
+      },
+      "dict_ops": {
+        "status": "success",
+        "iterations": 50000,
+        "samples_seconds": [
+          0.1385635,
+          0.134160417,
+          0.127566042
+        ],
+        "min_us_per_iter": 2.55132084,
+        "checksum": "2401"
+      }
+    }
+  }
+}
